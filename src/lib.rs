@@ -146,7 +146,8 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     });
 }
 
-fn main() {
+#[wasm_bindgen]
+pub fn main() {
     let event_loop = EventLoop::new();
     let window = winit::window::Window::new(&event_loop).unwrap();
     /*
