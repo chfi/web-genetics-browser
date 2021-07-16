@@ -137,7 +137,22 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         fragment: Some(wgpu::FragmentState {
             module: &fs,
             entry_point: "main",
-            targets: &[swapchain_format.into()],
+            targets: &[wgpu::ColorTargetState {
+                format: swapchain_format,
+                blend: Some(wgpu::BlendState {
+                    color: wgpu::BlendComponent {
+                        operation: wgpu::BlendOperation::Add,
+                        src_factor: wgpu::BlendFactor::SrcAlpha,
+                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                    },
+                    alpha: wgpu::BlendComponent {
+                        operation: wgpu::BlendOperation::Add,
+                        src_factor: wgpu::BlendFactor::SrcAlpha,
+                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                    },
+                }),
+                write_mask: wgpu::ColorWrite::ALL,
+            }],
         }),
         primitive: primitive_state,
         depth_stencil: None,
