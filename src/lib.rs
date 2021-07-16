@@ -64,10 +64,10 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         .expect("Failed to create device");
 
     // Load the shaders from disk
-    let vs_mod = include_shader!("triangle.vert.spv");
+    let vs_mod = include_shader!("gwas.vert.spv");
     let vs = device.create_shader_module(&vs_mod);
 
-    let fs_mod = include_shader!("triangle.frag.spv");
+    let fs_mod = include_shader!("gwas.frag.spv");
     let fs = device.create_shader_module(&fs_mod);
 
     let vertex_size = std::mem::size_of::<Vertex>();

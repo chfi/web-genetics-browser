@@ -17,14 +17,16 @@ impl Vertex {
 pub fn example_vertices() -> Vec<Vertex> {
     let mut data: Vec<Vertex> = Vec::new();
 
-    for i in 0..200 {
-        let x = ((i as f32) / 100.0) - 1.0;
+    let del = 0.03;
+
+    for i in 0..50 {
+        let x = ((i as f32) / 25.0) - 1.0;
         // let y = ((x * 2.0).sin() / 2.0) + 0.5;
         let y = (x * 2.0).sin();
 
-        let top = Vertex::new(x, y - 0.01);
-        let left = Vertex::new(x - 0.01, y + 0.01);
-        let right = Vertex::new(x + 0.01, y + 0.01);
+        let top = Vertex::new(x, y + del);
+        let left = Vertex::new(x - del, y - del);
+        let right = Vertex::new(x + del, y - del);
 
         data.push(top);
         data.push(left);
