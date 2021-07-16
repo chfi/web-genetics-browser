@@ -8,6 +8,13 @@ use wasm_bindgen::prelude::*;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
+#[macro_export]
+macro_rules! include_shader {
+    ($file:expr) => {
+        wgpu::include_spirv!(concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/", $file))
+    };
+}
+
 #[wasm_bindgen]
 extern "C" {
     fn alert(s: &str);
@@ -52,11 +59,11 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         .expect("Failed to create device");
 
     // Load the shaders from disk
-    let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
-        label: None,
-        source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("shader.wgsl"))),
-        flags: wgpu::ShaderFlags::all(),
-    });
+    let vs_mod = include_shader!("triangle.vert.spv");
+    let vs = device.create_shader_module(&vs_mod);
+
+    let fs_mod = include_shader!("triangle.frag.spv");
+    let fs = device.create_shader_module(&fs_mod);
 
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: None,
@@ -70,13 +77,13 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         label: None,
         layout: Some(&pipeline_layout),
         vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: "vs_main",
+            module: &vs,
+            entry_point: "main",
             buffers: &[],
         },
         fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: "fs_main",
+            module: &fs,
+            entry_point: "main",
             targets: &[swapchain_format.into()],
         }),
         primitive: wgpu::PrimitiveState::default(),
