@@ -1,6 +1,11 @@
+mod geometry;
 mod utils;
 
 use wasm_bindgen::prelude::*;
+
+use wgpu::util::DeviceExt;
+
+use geometry::Vertex;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -65,13 +70,61 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let fs_mod = include_shader!("triangle.frag.spv");
     let fs = device.create_shader_module(&fs_mod);
 
+    let vertex_size = std::mem::size_of::<Vertex>();
+
+    let vertex_data = geometry::example_vertices();
+
+    let vertex_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Vertices"),
+        contents: bytemuck::cast_slice(&vertex_data),
+        usage: wgpu::BufferUsage::VERTEX,
+    });
+
+    let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: None,
+        entries: &[wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStage::VERTEX,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: wgpu::BufferSize::new(64),
+                // min_binding_size: None,
+            },
+            count: None,
+        }],
+    });
+
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: None,
+        // bind_group_layouts: &[&bind_group_layout],
         bind_group_layouts: &[],
         push_constant_ranges: &[],
     });
 
+    let vertex_buffers = [wgpu::VertexBufferLayout {
+        array_stride: vertex_size as wgpu::BufferAddress,
+        step_mode: wgpu::InputStepMode::Vertex,
+        attributes: &[wgpu::VertexAttribute {
+            format: wgpu::VertexFormat::Float32x2,
+            offset: 0,
+            shader_location: 0,
+        }],
+    }];
+
     let swapchain_format = adapter.get_swap_chain_preferred_format(&surface).unwrap();
+
+    let primitive_state = wgpu::PrimitiveState {
+        topology: wgpu::PrimitiveTopology::TriangleList,
+        // topology: wgpu::PrimitiveTopology::LineStrip,
+        // strip_index_format: (),
+        // front_face: (),
+        // cull_mode: (),
+        // clamp_depth: (),
+        // polygon_mode: (),
+        // conservative: (),
+        ..wgpu::PrimitiveState::default()
+    };
 
     let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: None,
@@ -79,14 +132,14 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         vertex: wgpu::VertexState {
             module: &vs,
             entry_point: "main",
-            buffers: &[],
+            buffers: &vertex_buffers,
         },
         fragment: Some(wgpu::FragmentState {
             module: &fs,
             entry_point: "main",
             targets: &[swapchain_format.into()],
         }),
-        primitive: wgpu::PrimitiveState::default(),
+        primitive: primitive_state,
         depth_stencil: None,
         multisample: wgpu::MultisampleState::default(),
     });
@@ -105,7 +158,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         // Have the closure take ownership of the resources.
         // `event_loop.run` never returns, therefore we must do this to ensure
         // the resources are properly cleaned up.
-        let _ = (&instance, &adapter, &shader, &pipeline_layout);
+        let _ = (&instance, &adapter, &vs, &fs, &pipeline_layout);
 
         *control_flow = ControlFlow::Wait;
         match event {
@@ -132,14 +185,17 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                             view: &frame.view,
                             resolve_target: None,
                             ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
+                                load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                                 store: true,
                             },
                         }],
                         depth_stencil_attachment: None,
                     });
                     rpass.set_pipeline(&render_pipeline);
-                    rpass.draw(0..3, 0..1);
+                    // rpass.set_bind_group(
+                    rpass.set_vertex_buffer(0, vertex_buf.slice(..));
+                    rpass.draw(0..(vertex_data.len() as u32), 0..1);
+                    // rpass.draw(0..3, 0..1);
                 }
 
                 queue.submit(Some(encoder.finish()));
