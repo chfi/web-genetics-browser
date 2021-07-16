@@ -227,7 +227,6 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 #[wasm_bindgen]
 pub fn main() {
     let event_loop = EventLoop::new();
-    let window = winit::window::Window::new(&event_loop).unwrap();
     /*
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -238,14 +237,25 @@ pub fn main() {
     */
     #[cfg(target_arch = "wasm32")]
     {
+        let window = winit::window::Window::new(&event_loop).unwrap();
+
         std::panic::set_hook(Box::new(console_error_panic_hook::hook));
         console_log::init().expect("could not initialize logger");
+        use winit::platform::web::WindowBuilderExtWebSys;
         use winit::platform::web::WindowExtWebSys;
         // On wasm, append the canvas to the document body
+
         web_sys::window()
             .and_then(|win| win.document())
             .and_then(|doc| doc.body())
             .and_then(|body| {
+                window.canvas().set_width(800);
+                window.canvas().set_height(600);
+
+                let canvas_elem = window
+                    .canvas()
+                    .set_attribute("style", "width: 800px; height: 600px;");
+
                 body.append_child(&web_sys::Element::from(window.canvas()))
                     .ok()
             })
