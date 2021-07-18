@@ -1,5 +1,6 @@
 mod geometry;
 mod utils;
+mod view;
 
 use wasm_bindgen::prelude::*;
 
