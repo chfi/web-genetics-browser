@@ -1,4 +1,5 @@
 mod geometry;
+mod gwas;
 mod utils;
 mod view;
 
