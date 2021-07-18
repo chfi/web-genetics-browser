@@ -10,14 +10,14 @@ pub struct GwasPipeline {
     vs: wgpu::ShaderModule,
     fs: wgpu::ShaderModule,
 
-    vertex_buf: wgpu::Buffer,
-    vertex_count: usize,
+    pub vertex_buf: wgpu::Buffer,
+    pub vertex_count: usize,
 
-    bind_group_layout: wgpu::BindGroupLayout,
+    pub bind_group_layout: wgpu::BindGroupLayout,
 
-    pipeline_layout: wgpu::PipelineLayout,
+    pub pipeline_layout: wgpu::PipelineLayout,
 
-    render_pipeline: wgpu::RenderPipeline,
+    pub render_pipeline: wgpu::RenderPipeline,
 }
 
 impl GwasPipeline {
@@ -108,7 +108,8 @@ impl GwasPipeline {
             multisample: wgpu::MultisampleState::default(),
         });
 
-        let vertex_count = vertex_data.len() * 3;
+        // TODO use the GWAS data point count
+        let vertex_count = vertex_data.len();
 
         Ok(Self {
             vs,
@@ -135,8 +136,6 @@ impl GwasPipeline {
             depth_stencil_attachment: None,
         });
         rpass.set_pipeline(&self.render_pipeline);
-
-        // rpass.set_bind_group(
         rpass.set_vertex_buffer(0, self.vertex_buf.slice(..));
         rpass.draw(0..(self.vertex_count as u32), 0..1);
     }
