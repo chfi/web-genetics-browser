@@ -1,5 +1,7 @@
 use crate::geometry::{Point, Rect};
 
+use nalgebra_glm as glm;
+
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct View {
     pub center: f32,

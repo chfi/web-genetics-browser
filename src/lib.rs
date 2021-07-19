@@ -1,8 +1,10 @@
 mod geometry;
 mod gwas;
+mod state;
 mod utils;
 mod view;
 
+use state::SharedState;
 use wasm_bindgen::prelude::*;
 
 use wgpu::util::DeviceExt;
@@ -69,6 +71,10 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
     let gwas_pipeline = gwas::GwasPipeline::new(&device, swapchain_format).unwrap();
 
+    let state = SharedState {
+        view: Default::default(),
+    };
+
     let mut sc_desc = wgpu::SwapChainDescriptor {
         usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
         format: swapchain_format,
@@ -108,6 +114,23 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 gwas_pipeline.draw(&mut encoder, &frame);
 
                 queue.submit(Some(encoder.finish()));
+            }
+            Event::WindowEvent {
+                event: WindowEvent::MouseWheel { delta, .. },
+                ..
+            } => {
+                let mut view = state.view.load();
+
+                match delta {
+                    winit::event::MouseScrollDelta::LineDelta(_, y) => {
+                        view.scale += y;
+                    }
+                    winit::event::MouseScrollDelta::PixelDelta(p) => {
+                        view.scale += p.y as f32;
+                    }
+                }
+                web_sys::console::log_1(&format!("zooming to {}", view.scale).into());
+                state.view.store(view);
             }
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
