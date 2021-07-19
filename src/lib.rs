@@ -71,6 +71,9 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
     let gwas_pipeline = gwas::GwasPipeline::new(&device, swapchain_format).unwrap();
 
+    let mut t = instant::Instant::now();
+    let mut fired = false;
+
     let state = SharedState {
         view: Default::default(),
     };
@@ -103,6 +106,17 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 sc_desc.height = size.height;
                 swap_chain = device.create_swap_chain(&surface, &sc_desc);
             }
+            Event::MainEventsCleared => {
+                web_sys::console::log_1(&format!("sec: {}", t.elapsed().as_secs_f64()).into());
+                if t.elapsed().as_secs_f32() > 1.0 {
+                    fired = true;
+
+                    t = instant::Instant::now();
+
+                    web_sys::console::log_1(&"firing event".into());
+                }
+            }
+
             Event::RedrawRequested(_) => {
                 let frame = swap_chain
                     .get_current_frame()

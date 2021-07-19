@@ -20,6 +20,7 @@ anyhow = "1.0"
 bytemuck = { version = "1.4", features = ["derive"] }
 crossbeam = "0.8"
 
+instant = { version = "0.1", features = ["wasm-bindgen"] }
 
 nalgebra = "0.24"
 nalgebra-glm = "0.10"
