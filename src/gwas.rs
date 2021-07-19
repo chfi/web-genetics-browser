@@ -13,7 +13,10 @@ pub struct GwasPipeline {
     pub vertex_buf: wgpu::Buffer,
     pub vertex_count: usize,
 
+    pub uniform_buf: wgpu::Buffer,
+
     pub bind_group_layout: wgpu::BindGroupLayout,
+    pub bind_group: wgpu::BindGroup,
 
     pub pipeline_layout: wgpu::PipelineLayout,
 
@@ -46,17 +49,34 @@ impl GwasPipeline {
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
-                    min_binding_size: wgpu::BufferSize::new(64),
-                    // min_binding_size: None,
+                    // min_binding_size: wgpu::BufferSize::new(64),
+                    min_binding_size: None,
                 },
                 count: None,
             }],
         });
 
+        let uniform_contents_test = [1.0];
+        let uniform_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Uniform Buffer"),
+            contents: bytemuck::cast_slice(&uniform_contents_test),
+            // contents: bytemuck::cast_slice(mx_ref),
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+        });
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniform_buf.as_entire_binding(),
+            }],
+            label: None,
+        });
+
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            // bind_group_layouts: &[&bind_group_layout],
-            bind_group_layouts: &[],
+            bind_group_layouts: &[&bind_group_layout],
+            // bind_group_layouts: &[],
             push_constant_ranges: &[],
         });
 
@@ -114,9 +134,15 @@ impl GwasPipeline {
         Ok(Self {
             vs,
             fs,
+
             vertex_buf,
             vertex_count,
+
+            uniform_buf,
+
             bind_group_layout,
+            bind_group,
+
             pipeline_layout,
             render_pipeline,
         })
@@ -136,7 +162,13 @@ impl GwasPipeline {
             depth_stencil_attachment: None,
         });
         rpass.set_pipeline(&self.render_pipeline);
+        rpass.set_bind_group(0, &self.bind_group, &[]);
         rpass.set_vertex_buffer(0, self.vertex_buf.slice(..));
         rpass.draw(0..(self.vertex_count as u32), 0..1);
+    }
+
+    pub fn write_uniform(&mut self, _device: &wgpu::Device, queue: &wgpu::Queue, new_scale: f32) {
+        let data = [new_scale];
+        queue.write_buffer(&self.uniform_buf, 0, bytemuck::cast_slice(&data));
     }
 }

@@ -1,3 +1,4 @@
+// mod coordinates;
 // mod animation;
 mod geometry;
 mod gwas;
@@ -70,7 +71,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
     let swapchain_format = adapter.get_swap_chain_preferred_format(&surface).unwrap();
 
-    let gwas_pipeline = gwas::GwasPipeline::new(&device, swapchain_format).unwrap();
+    let mut gwas_pipeline = gwas::GwasPipeline::new(&device, swapchain_format).unwrap();
 
     let mut t = instant::Instant::now();
     let mut fired = false;
@@ -123,6 +124,10 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     .get_current_frame()
                     .expect("Failed to acquire next swap chain texture")
                     .output;
+
+                let view = state.view.load();
+                gwas_pipeline.write_uniform(&device, &queue, view.scale);
+
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
@@ -138,10 +143,10 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
                 match delta {
                     winit::event::MouseScrollDelta::LineDelta(_, y) => {
-                        view.scale += y;
+                        view.scale += y / 100.0;
                     }
                     winit::event::MouseScrollDelta::PixelDelta(p) => {
-                        view.scale += p.y as f32;
+                        view.scale += (p.y / 100.0) as f32;
                     }
                 }
                 web_sys::console::log_1(&format!("zooming to {}", view.scale).into());

@@ -4,6 +4,8 @@ use nalgebra_glm as glm;
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct View {
+    pub base_bp_width: f32,
+
     pub center: f32,
     pub scale: f32,
 }
@@ -68,6 +70,7 @@ impl Default for View {
     #[inline]
     fn default() -> Self {
         Self {
+            base_bp_width: 10.0,
             center: 0.0,
             scale: 1.0,
         }

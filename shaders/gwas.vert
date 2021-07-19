@@ -4,6 +4,10 @@ layout (location = 0) in vec2 position;
 
 layout (location = 0) out vec3 barycentric;
 
+layout (set = 0, binding = 0) uniform UBO {
+  float scale;
+} ubo;
+
 out gl_PerVertex {
   vec4 gl_Position;
   // float gl_PointSize;
@@ -12,7 +16,18 @@ out gl_PerVertex {
 
 void main() {
   // vec4 pos = ubo.view * ubo.projection * vec4(position, 0.0, 1.0);
-  gl_Position = vec4(position, 0.0, 1.0f);
+
+  // float angle = 1.0;
+
+  // mat2 rotate = mat2(cos(ubo.scale), -sin(ubo.scale),
+  //                    sin(ubo.scale),  cos(ubo.scale));
+
+  // vec2 rot_pos = rotate * position;
+
+  vec2 rot_pos = (ubo.scale - 1.0) + position;
+  // vec2 pos = position;
+  // pos.x += scale * 0.01;
+  gl_Position = vec4(rot_pos, 0.0, 1.0f);
 
   float b_x;
   float b_y;
