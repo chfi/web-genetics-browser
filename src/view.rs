@@ -6,6 +6,62 @@ pub struct View {
     pub scale: f32,
 }
 
+impl View {
+    #[rustfmt::skip]
+    #[inline]
+    pub fn to_scaled_matrix(&self) -> glm::Mat4 {
+        let scale = 1.0 / self.scale;
+
+        let scaling =
+            glm::mat4(scale, 0.0,   0.0, 0.0,
+                      0.0,   scale, 0.0, 0.0,
+                      0.0,   0.0,   1.0, 1.0,
+                      0.0,   0.0,   0.0, 1.0);
+
+        let x = self.center;
+
+        let translation =
+            glm::mat4(1.0, 0.0, 0.0,   x,
+                      0.0, 1.0, 0.0, 0.0,
+                      0.0, 0.0, 1.0, 0.0,
+                      0.0, 0.0, 0.0, 1.0);
+
+        scaling * translation
+    }
+
+    pub fn basepair_to_screen_map(&self) -> glm::Mat4 {
+        let s = self.scale;
+        let x = self.center;
+
+        #[rustfmt::skip]
+        let view_scale_screen =
+            glm::mat4(  s, 0.0, 0.0, x - (s * 0.5),
+                      0.0,   s, 0.0, 0.0,
+                      0.0, 0.0, 1.0, 0.0,
+                      0.0, 0.0, 0.0, 1.0);
+
+        view_scale_screen
+    }
+
+    pub fn screen_to_basepair_map<Dims: Into<ViewportDims>>(&self, dims: Dims) -> glm::Mat4 {
+        let dims = dims.into();
+
+        let w = dims.width;
+
+        let s = self.scale;
+        let x = self.center;
+
+        #[rustfmt::skip]
+        let view_scale_screen =
+            glm::mat4(s,   0.0, 0.0,   x - (w * s * 0.5),
+                      0.0, s,   0.0, 0.0,
+                      0.0, 0.0, 1.0, 0.0,
+                      0.0, 0.0, 0.0, 1.0);
+
+        view_scale_screen
+    }
+}
+
 impl Default for View {
     #[inline]
     fn default() -> Self {
