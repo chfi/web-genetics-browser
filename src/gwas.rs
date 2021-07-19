@@ -56,7 +56,7 @@ impl GwasPipeline {
             }],
         });
 
-        let uniform_contents_test = [1.0];
+        let uniform_contents_test = [0.0, 0.0, 0.0, 0.0];
         let uniform_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
             contents: bytemuck::cast_slice(&uniform_contents_test),
@@ -161,14 +161,19 @@ impl GwasPipeline {
             }],
             depth_stencil_attachment: None,
         });
+        rpass.push_debug_group("Prepare data for draw.");
         rpass.set_pipeline(&self.render_pipeline);
         rpass.set_bind_group(0, &self.bind_group, &[]);
         rpass.set_vertex_buffer(0, self.vertex_buf.slice(..));
+        rpass.pop_debug_group();
+        rpass.insert_debug_marker("Draw!");
         rpass.draw(0..(self.vertex_count as u32), 0..1);
     }
 
     pub fn write_uniform(&mut self, _device: &wgpu::Device, queue: &wgpu::Queue, new_scale: f32) {
-        let data = [new_scale];
+        // let data = [0.0, new_scale];
+        let data = [new_scale, new_scale, new_scale, new_scale];
+        // let data = [new_scale, 0.0, 0.0, 0.0];
         queue.write_buffer(&self.uniform_buf, 0, bytemuck::cast_slice(&data));
     }
 }

@@ -117,9 +117,10 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
                     web_sys::console::log_1(&"firing event".into());
                 }
-            }
+                // }
 
-            Event::RedrawRequested(_) => {
+                // Event::RedrawRequested(_) => {
+                web_sys::console::log_1(&"rendering".into());
                 let frame = swap_chain
                     .get_current_frame()
                     .expect("Failed to acquire next swap chain texture")
