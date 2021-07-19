@@ -1,4 +1,4 @@
-mod animation;
+// mod animation;
 mod geometry;
 mod gwas;
 mod state;
