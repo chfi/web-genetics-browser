@@ -36,7 +36,7 @@ impl GwasPipeline {
 
         let vertex_size = std::mem::size_of::<Vertex>();
 
-        let vertex_data = crate::geometry::example_vertices();
+        let vertex_data = crate::geometry::example_vertices_2();
 
         let vertex_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertices"),

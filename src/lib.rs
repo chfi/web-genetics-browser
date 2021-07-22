@@ -127,16 +127,17 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 event: WindowEvent::KeyboardInput { input, .. },
                 ..
             } => {
+                // web_sys::console::log_1(&format!("random: {}", val).into());
                 use winit::event::VirtualKeyCode as Key;
                 match input.virtual_keycode {
                     Some(Key::Left) => {
                         let mut view = state.view.load();
-                        view.center -= 0.1;
+                        view.center -= (0.1 / view.scale);
                         state.view.store(view);
                     }
                     Some(Key::Right) => {
                         let mut view = state.view.load();
-                        view.center += 0.1;
+                        view.center += (0.1 / view.scale);
                         state.view.store(view);
                     }
                     _ => (),

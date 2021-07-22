@@ -14,15 +14,13 @@ out gl_PerVertex {
 
 
 void main() {
-
   vec4 pos = ubo.view_transform * vec4(position, 0.0, 1.0);
-
 
   float b_x;
   float b_y;
   float b_z;
 
-  float del = 0.05;
+  float del = 0.035;
 
   if ((gl_VertexIndex % 3) == 0) {
     barycentric = vec3(1.0, 0.0, 0.0);

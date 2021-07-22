@@ -15,6 +15,7 @@ impl View {
     #[inline]
     pub fn to_scaled_matrix(&self) -> glm::Mat4 {
         let scale = self.base_bp_width / self.scale;
+        // let scale = 1.0 / (self.scale * self.base_bp_width);
 
         let scaling =
             glm::mat4(scale, 0.0,   0.0, 0.0,
@@ -25,9 +26,9 @@ impl View {
         let x = self.center;
 
         let translation =
-            glm::mat4(1.0, 0.0, 0.0,   x,
+            glm::mat4(1.0, 0.0, 0.0,  -x,
                       0.0, 1.0, 0.0, 0.0,
-                      0.0, 0.0, 1.0, 0.0,
+                      0.0, 0.0, 1.0, 1.0,
                       0.0, 0.0, 0.0, 1.0);
 
         scaling * translation
@@ -41,7 +42,7 @@ impl View {
         let view_scale_screen =
             glm::mat4(  s, 0.0, 0.0, x - (s * 0.5),
                       0.0, 1.0, 0.0, 0.0,
-                      0.0, 0.0, 1.0, 0.0,
+                      0.0, 0.0, 1.0, 1.0,
                       0.0, 0.0, 0.0, 1.0);
 
         view_scale_screen
@@ -59,7 +60,7 @@ impl View {
         let view_scale_screen =
             glm::mat4(s,   0.0, 0.0,   x - (w * s * 0.5),
                       0.0, s,   0.0, 0.0,
-                      0.0, 0.0, 1.0, 0.0,
+                      0.0, 0.0, 1.0, 1.0,
                       0.0, 0.0, 0.0, 1.0);
 
         view_scale_screen
@@ -71,8 +72,12 @@ impl Default for View {
     fn default() -> Self {
         Self {
             base_bp_width: 10.0,
-            center: 0.0,
-            scale: 1.0,
+            // base_bp_width: 0.1,
+            // base_bp_width: 1.0,
+            // center: 0.0,
+            center: 500_000.0,
+            // scale: 1.0,
+            scale: 10_000.0,
         }
     }
 }

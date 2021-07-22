@@ -300,6 +300,24 @@ impl_assign_binop!(DivAssign, Rhs = f32, div, div_assign);
 impl_ref_binop!(Div, &f32, div);
 impl_ref_assign_binop!(DivAssign, &f32, div_assign);
 
+pub fn example_vertices_2() -> Vec<Vertex> {
+    use rand::prelude::*;
+
+    let mut data: Vec<Vertex> = Vec::with_capacity(3_000_000);
+
+    for i in 0..1_000_000 {
+        let x = i as f32;
+        let y = (random::<f32>() * 1.6) - 0.9;
+
+        let vx = Vertex::new(x, y);
+        data.push(vx);
+        data.push(vx);
+        data.push(vx);
+    }
+
+    data
+}
+
 pub fn example_vertices() -> Vec<Vertex> {
     let mut data: Vec<Vertex> = Vec::new();
 
