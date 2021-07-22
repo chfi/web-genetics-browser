@@ -307,10 +307,9 @@ pub fn example_vertices() -> Vec<Vertex> {
 
     for i in 0..50 {
         let x = ((i as f32) / 25.0) - 1.0;
-        let y = (x * 2.0).sin();
+        let y = (x * 2.0).sin() * 0.9;
 
         let top = Vertex::new(x, y);
-        let right = Vertex::new(x + del, y - del);
 
         data.push(top);
         data.push(top);

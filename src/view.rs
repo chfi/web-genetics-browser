@@ -14,7 +14,7 @@ impl View {
     #[rustfmt::skip]
     #[inline]
     pub fn to_scaled_matrix(&self) -> glm::Mat4 {
-        let scale = 1.0 / self.scale;
+        let scale = self.base_bp_width / self.scale;
 
         let scaling =
             glm::mat4(scale, 0.0,   0.0, 0.0,
@@ -34,7 +34,7 @@ impl View {
     }
 
     pub fn basepair_to_screen_map(&self) -> glm::Mat4 {
-        let s = self.scale;
+        let s = self.base_bp_width / self.scale;
         let x = self.center;
 
         #[rustfmt::skip]
@@ -52,7 +52,7 @@ impl View {
 
         let w = dims.width;
 
-        let s = self.scale;
+        let s = self.base_bp_width / self.scale;
         let x = self.center;
 
         #[rustfmt::skip]
