@@ -6,4 +6,6 @@ use std::sync::Arc;
 
 pub struct SharedState {
     pub view: Arc<AtomicCell<View>>,
+
+    pub mouse_pos: Arc<AtomicCell<Point>>,
 }

@@ -11,7 +11,7 @@ use wasm_bindgen::prelude::*;
 
 use wgpu::util::DeviceExt;
 
-use geometry::Vertex;
+use geometry::{Point, Vertex};
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -75,6 +75,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
     let state = SharedState {
         view: Default::default(),
+        mouse_pos: Default::default(),
     };
 
     let mut sc_desc = wgpu::SwapChainDescriptor {
@@ -121,6 +122,33 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 gwas_pipeline.draw(&mut encoder, &frame);
 
                 queue.submit(Some(encoder.finish()));
+            }
+            Event::WindowEvent {
+                event: WindowEvent::KeyboardInput { input, .. },
+                ..
+            } => {
+                use winit::event::VirtualKeyCode as Key;
+                match input.virtual_keycode {
+                    Some(Key::Left) => {
+                        let mut view = state.view.load();
+                        view.center -= 0.1;
+                        state.view.store(view);
+                    }
+                    Some(Key::Right) => {
+                        let mut view = state.view.load();
+                        view.center += 0.1;
+                        state.view.store(view);
+                    }
+                    _ => (),
+                }
+            }
+            Event::WindowEvent {
+                event: WindowEvent::CursorMoved { position, .. },
+                ..
+            } => {
+                state
+                    .mouse_pos
+                    .store(Point::new(position.x as f32, position.y as f32));
             }
             Event::WindowEvent {
                 event: WindowEvent::MouseWheel { delta, .. },
