@@ -11,11 +11,12 @@ void main() {
 
   float dist = distance(barycentric, vec3(0.5));
 
-  if (dist < 0.4) {
-    f_color = center_color;
-  } else if (dist < 0.48) {
-    f_color = border_color;
+  if (dist < 0.46) {
+    float color_step = smoothstep(0.4, 0.42, dist);
+    f_color = mix(center_color, border_color, color_step);
   } else {
-    f_color = vec4(0.0);
+    float color_step = smoothstep(0.45, 0.5, dist);
+    float alpha = mix(1.0, 0.0, color_step);
+    f_color = vec4(border_color.rgb, alpha);
   }
 }

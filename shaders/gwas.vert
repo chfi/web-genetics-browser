@@ -6,14 +6,10 @@ layout (location = 0) out vec3 barycentric;
 
 layout (set = 0, binding = 0) uniform UBO {
   mat4 view_transform;
-  // float scale;
-  // float s
-  // vec4 scale;
 } ubo;
 
 out gl_PerVertex {
   vec4 gl_Position;
-  // float gl_PointSize;
 };
 
 
