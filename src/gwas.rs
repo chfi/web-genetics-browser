@@ -4,7 +4,10 @@ use wgpu::util::DeviceExt;
 
 use anyhow::Result;
 
+use nalgebra_glm as glm;
+
 use crate::geometry::Vertex;
+use crate::view::{View, ViewportDims};
 
 pub struct GwasPipeline {
     vs: wgpu::ShaderModule,
@@ -56,10 +59,14 @@ impl GwasPipeline {
             }],
         });
 
-        let uniform_contents_test = [0.0, 0.0, 0.0, 0.0];
+        let default_view = View::default();
+        let matrix = default_view.to_scaled_matrix();
+        let uniform_contents = [crate::view::mat4_to_array(&matrix)];
+        // let uniform_contents = [glm::value_ptr(&matrix)];
+        // let uniform_contents_test = [0.0, 0.0, 0.0, 0.0];
         let uniform_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
-            contents: bytemuck::cast_slice(&uniform_contents_test),
+            contents: bytemuck::cast_slice(&uniform_contents),
             // contents: bytemuck::cast_slice(mx_ref),
             usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
         });
@@ -170,10 +177,10 @@ impl GwasPipeline {
         rpass.draw(0..(self.vertex_count as u32), 0..1);
     }
 
-    pub fn write_uniform(&mut self, _device: &wgpu::Device, queue: &wgpu::Queue, new_scale: f32) {
-        // let data = [0.0, new_scale];
-        let data = [new_scale, new_scale, new_scale, new_scale];
-        // let data = [new_scale, 0.0, 0.0, 0.0];
+    pub fn write_uniform(&mut self, _device: &wgpu::Device, queue: &wgpu::Queue, new_view: View) {
+        let matrix = new_view.to_scaled_matrix();
+        let data = [crate::view::mat4_to_array(&matrix)];
+
         queue.write_buffer(&self.uniform_buf, 0, bytemuck::cast_slice(&data));
     }
 }

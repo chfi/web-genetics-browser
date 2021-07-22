@@ -18,8 +18,8 @@ impl View {
 
         let scaling =
             glm::mat4(scale, 0.0,   0.0, 0.0,
-                      0.0,   scale, 0.0, 0.0,
-                      0.0,   0.0,   1.0, 1.0,
+                      0.0,   1.0,   0.0, 0.0,
+                      0.0,   0.0,   1.0, 0.0,
                       0.0,   0.0,   0.0, 1.0);
 
         let x = self.center;
@@ -40,7 +40,7 @@ impl View {
         #[rustfmt::skip]
         let view_scale_screen =
             glm::mat4(  s, 0.0, 0.0, x - (s * 0.5),
-                      0.0,   s, 0.0, 0.0,
+                      0.0, 1.0, 0.0, 0.0,
                       0.0, 0.0, 1.0, 0.0,
                       0.0, 0.0, 0.0, 1.0);
 
@@ -129,3 +129,29 @@ impl From<[u32; 2]> for ViewportDims {
         }
     }
 }
+
+#[inline]
+pub fn mat4_to_array(matrix: &glm::Mat4) -> [[f32; 4]; 4] {
+    let s = glm::value_ptr(matrix);
+
+    let col0 = [s[0], s[1], s[2], s[3]];
+    let col1 = [s[4], s[5], s[6], s[7]];
+    let col2 = [s[8], s[9], s[10], s[11]];
+    let col3 = [s[12], s[13], s[14], s[15]];
+
+    [col0, col1, col2, col3]
+}
+
+/*
+#[inline]
+pub fn mat4_to_array(matrix: &glm::Mat4) -> [[f32; 4]; 4] {
+    let s = glm::value_ptr(matrix);
+
+    let col0 = [s[0], s[4], s[8], s[12]];
+    let col1 = [s[1], s[5], s[9], s[13]];
+    let col2 = [s[2], s[6], s[10], s[14]];
+    let col3 = [s[3], s[7], s[11], s[15]];
+
+    [col0, col1, col2, col3]
+}
+*/

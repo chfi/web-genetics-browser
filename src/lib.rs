@@ -127,7 +127,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     .output;
 
                 let view = state.view.load();
-                gwas_pipeline.write_uniform(&device, &queue, view.scale);
+                gwas_pipeline.write_uniform(&device, &queue, view);
 
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
