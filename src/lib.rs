@@ -73,9 +73,6 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
     let mut gwas_pipeline = gwas::GwasPipeline::new(&device, swapchain_format).unwrap();
 
-    let mut t = instant::Instant::now();
-    let mut fired = false;
-
     let state = SharedState {
         view: Default::default(),
     };
@@ -109,18 +106,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 swap_chain = device.create_swap_chain(&surface, &sc_desc);
             }
             Event::MainEventsCleared => {
-                web_sys::console::log_1(&format!("sec: {}", t.elapsed().as_secs_f64()).into());
-                if t.elapsed().as_secs_f32() > 1.0 {
-                    fired = true;
-
-                    t = instant::Instant::now();
-
-                    web_sys::console::log_1(&"firing event".into());
-                }
-                // }
-
                 // Event::RedrawRequested(_) => {
-                web_sys::console::log_1(&"rendering".into());
                 let frame = swap_chain
                     .get_current_frame()
                     .expect("Failed to acquire next swap chain texture")
@@ -144,13 +130,14 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
                 match delta {
                     winit::event::MouseScrollDelta::LineDelta(_, y) => {
-                        view.scale += y / 100.0;
+                        let delta = 1.00 + (-y / 100.0);
+                        view.scale *= delta;
                     }
                     winit::event::MouseScrollDelta::PixelDelta(p) => {
-                        view.scale += (p.y / 100.0) as f32;
+                        let delta = 1.00 + (-p.y / 1000.0) as f32;
+                        view.scale *= delta;
                     }
                 }
-                web_sys::console::log_1(&format!("zooming to {}", view.scale).into());
                 state.view.store(view);
             }
             Event::WindowEvent {
