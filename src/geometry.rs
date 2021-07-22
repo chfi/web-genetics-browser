@@ -307,23 +307,15 @@ pub fn example_vertices() -> Vec<Vertex> {
 
     for i in 0..50 {
         let x = ((i as f32) / 25.0) - 1.0;
-        // let y = ((x * 2.0).sin() / 2.0) + 0.5;
         let y = (x * 2.0).sin();
 
-        let top = Vertex::new(x, y + del);
-        let left = Vertex::new(x - del, y - del);
+        let top = Vertex::new(x, y);
         let right = Vertex::new(x + del, y - del);
 
         data.push(top);
-        data.push(left);
-        data.push(right);
+        data.push(top);
+        data.push(top);
     }
 
     data
 }
-
-// pub fn example_vertices() -> Vec<Vertex> {
-//     vec![
-//         Vertex { pos: [
-//     ]
-// }

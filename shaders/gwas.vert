@@ -21,17 +21,25 @@ void main() {
 
   vec4 pos = ubo.view_transform * vec4(position, 0.0, 1.0);
 
-  gl_Position = vec4(pos.xy, 0.0, 1.0f);
 
   float b_x;
   float b_y;
   float b_z;
 
+  float del = 0.05;
+
   if ((gl_VertexIndex % 3) == 0) {
     barycentric = vec3(1.0, 0.0, 0.0);
+    pos.y += del;
   } else if ((gl_VertexIndex % 3) == 1) {
     barycentric = vec3(0.0, 1.0, 0.0);
+    pos.x -= (del * 0.717);
+    pos.y -= (del * 0.717);
   } else {
     barycentric = vec3(0.0, 0.0, 1.0);
+    pos.x += (del * 0.717);
+    pos.y -= (del * 0.717);
   }
+
+  gl_Position = vec4(pos.xy, 0.0, 1.0f);
 }
