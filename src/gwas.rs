@@ -174,6 +174,87 @@ impl GwasPipeline {
     }
 }
 
+use std::collections::HashMap;
+
+pub struct GwasDataChrs {
+    pub vertex_buffers: HashMap<String, wgpu::Buffer>,
+    pub vertex_counts: HashMap<String, usize>,
+
+    pub data: HashMap<String, Vec<JsValue>>,
+}
+
+impl GwasDataChrs {
+    pub async fn fetch_and_parse(device: &wgpu::Device, url: &str) -> Result<Self> {
+        use wasm_bindgen::JsCast;
+        use wasm_bindgen_futures::JsFuture;
+        use web_sys::{Request, RequestInit, Response};
+
+        let window = web_sys::window().unwrap();
+
+        let mut opts = RequestInit::new();
+        opts.method("GET");
+
+        // TODO handle errors correctly
+        let request = Request::new_with_str_and_init(&url, &opts).unwrap();
+
+        let resp_value = JsFuture::from(window.fetch_with_request(&request))
+            .await
+            .unwrap();
+
+        let resp: Response = resp_value.dyn_into().unwrap();
+        let json = JsFuture::from(resp.json().unwrap()).await.unwrap();
+        let json_array: js_sys::Array = json.dyn_into().ok().unwrap();
+
+        let mut objects: HashMap<String, Vec<JsValue>> = HashMap::default();
+        let mut vertex_datas: HashMap<String, Vec<Vertex>> = HashMap::default();
+
+        for value in json_array.iter() {
+            let chr = js_sys::Reflect::get(&value, &"chr".into()).unwrap();
+            let chr = chr.as_string().unwrap();
+
+            let pos = js_sys::Reflect::get(&value, &"ps".into()).unwrap();
+            let p = js_sys::Reflect::get(&value, &"p_wald".into()).unwrap();
+
+            let pos = pos.as_f64().unwrap();
+            let p = p.as_f64().unwrap();
+
+            objects.entry(chr.clone()).or_default().push(value);
+
+            let vertices = vertex_datas.entry(chr).or_default();
+
+            let vertex = Vertex::new(pos as f32, p as f32);
+            vertices.push(vertex);
+            vertices.push(vertex);
+            vertices.push(vertex);
+        }
+
+        let mut vertex_buffers: HashMap<String, wgpu::Buffer> = HashMap::default();
+        let mut vertex_counts: HashMap<String, usize> = HashMap::default();
+
+        for chr in objects.keys() {
+            let vertex_data = vertex_datas.get(chr).unwrap();
+
+            let vertex_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(&format!("Vertices, chr {}", chr)),
+                contents: bytemuck::cast_slice(&vertex_data),
+                usage: wgpu::BufferUsage::VERTEX,
+            });
+
+            let vertex_count = vertex_data.len();
+
+            vertex_buffers.insert(chr.to_owned(), vertex_buf);
+            vertex_counts.insert(chr.to_owned(), vertex_count);
+        }
+
+        Ok(Self {
+            vertex_buffers,
+            vertex_counts,
+
+            data: objects,
+        })
+    }
+}
+
 pub struct GwasData {
     pub vertex_buf: wgpu::Buffer,
     pub vertex_count: usize,
@@ -225,17 +306,22 @@ impl GwasData {
         let mut vertex_data: Vec<Vertex> = Vec::new();
 
         for value in json_array.iter() {
-            let pos = js_sys::Reflect::get(&value, &"ps".into()).unwrap();
-            let p = js_sys::Reflect::get(&value, &"p_wald".into()).unwrap();
+            let chr = js_sys::Reflect::get(&value, &"chr".into()).unwrap();
+            let chr = chr.as_string().unwrap();
 
-            let pos = pos.as_f64().unwrap();
-            let p = p.as_f64().unwrap();
+            if chr == "1" {
+                let pos = js_sys::Reflect::get(&value, &"ps".into()).unwrap();
+                let p = js_sys::Reflect::get(&value, &"p_wald".into()).unwrap();
 
-            objects.push(value);
-            let vertex = Vertex::new(pos as f32, p as f32);
-            vertex_data.push(vertex);
-            vertex_data.push(vertex);
-            vertex_data.push(vertex);
+                let pos = pos.as_f64().unwrap();
+                let p = p.as_f64().unwrap();
+
+                objects.push(value);
+                let vertex = Vertex::new(pos as f32, p as f32);
+                vertex_data.push(vertex);
+                vertex_data.push(vertex);
+                vertex_data.push(vertex);
+            }
         }
 
         let data = objects.into_boxed_slice();

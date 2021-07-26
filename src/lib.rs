@@ -6,7 +6,7 @@ mod state;
 mod utils;
 mod view;
 
-use gwas::GwasData;
+use gwas::{GwasData, GwasDataChrs};
 use state::SharedState;
 use wasm_bindgen::prelude::*;
 
@@ -73,6 +73,10 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         .await
         .unwrap();
 
+    let gwas_chr_data = GwasDataChrs::fetch_and_parse(&device, "http://localhost:8080/gwas.json")
+        .await
+        .unwrap();
+
     let mut gwas_pipeline = gwas::GwasPipeline::new(&device, swapchain_format).unwrap();
 
     let state = SharedState {
@@ -121,7 +125,12 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-                let buf = gwas_data.vertex_buf.slice(..);
+                // let buf = gwas_data.vertex_buf.slice(..);
+                let buf = gwas_chr_data.vertex_buffers.get("1").unwrap();
+                let count = gwas_chr_data.vertex_counts.get("1").unwrap();
+
+                let buf = buf.slice(..);
+
                 gwas_pipeline.draw(&mut encoder, &frame, buf, gwas_data.vertex_count);
 
                 queue.submit(Some(encoder.finish()));
@@ -131,20 +140,23 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 ..
             } => {
                 // web_sys::console::log_1(&format!("random: {}", val).into());
+
                 use winit::event::VirtualKeyCode as Key;
+
+                let mut view = state.view.load();
+                let w = sc_desc.width as f32;
+
                 match input.virtual_keycode {
                     Some(Key::Left) => {
-                        let mut view = state.view.load();
-                        view.center -= 0.1 / view.scale;
-                        state.view.store(view);
+                        view.center -= (5.0 * view.scale) / w;
                     }
                     Some(Key::Right) => {
-                        let mut view = state.view.load();
-                        view.center += 0.1 / view.scale;
-                        state.view.store(view);
+                        view.center += (5.0 * view.scale) / w;
                     }
                     _ => (),
                 }
+
+                state.view.store(view);
             }
             Event::WindowEvent {
                 event: WindowEvent::CursorMoved { position, .. },
