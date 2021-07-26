@@ -13,9 +13,6 @@ pub struct GwasPipeline {
     vs: wgpu::ShaderModule,
     fs: wgpu::ShaderModule,
 
-    pub vertex_buf: wgpu::Buffer,
-    pub vertex_count: usize,
-
     pub uniform_buf: wgpu::Buffer,
 
     pub bind_group_layout: wgpu::BindGroupLayout,
@@ -35,14 +32,6 @@ impl GwasPipeline {
         let fs = device.create_shader_module(&fs_mod);
 
         let vertex_size = std::mem::size_of::<Vertex>();
-
-        let vertex_data = crate::geometry::example_vertices_2();
-
-        let vertex_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertices"),
-            contents: bytemuck::cast_slice(&vertex_data),
-            usage: wgpu::BufferUsage::VERTEX,
-        });
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: None,
@@ -135,15 +124,9 @@ impl GwasPipeline {
             multisample: wgpu::MultisampleState::default(),
         });
 
-        // TODO use the GWAS data point count
-        let vertex_count = vertex_data.len();
-
         Ok(Self {
             vs,
             fs,
-
-            vertex_buf,
-            vertex_count,
 
             uniform_buf,
 
@@ -155,7 +138,13 @@ impl GwasPipeline {
         })
     }
 
-    pub fn draw(&self, encoder: &mut wgpu::CommandEncoder, frame: &wgpu::SwapChainTexture) {
+    pub fn draw(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        frame: &wgpu::SwapChainTexture,
+        buf: wgpu::BufferSlice<'_>,
+        vertex_count: usize,
+    ) {
         let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
             color_attachments: &[wgpu::RenderPassColorAttachment {
@@ -171,10 +160,10 @@ impl GwasPipeline {
         rpass.push_debug_group("Prepare data for draw.");
         rpass.set_pipeline(&self.render_pipeline);
         rpass.set_bind_group(0, &self.bind_group, &[]);
-        rpass.set_vertex_buffer(0, self.vertex_buf.slice(..));
+        rpass.set_vertex_buffer(0, buf);
         rpass.pop_debug_group();
         rpass.insert_debug_marker("Draw!");
-        rpass.draw(0..(self.vertex_count as u32), 0..1);
+        rpass.draw(0..(vertex_count as u32), 0..1);
     }
 
     pub fn write_uniform(&mut self, _device: &wgpu::Device, queue: &wgpu::Queue, new_view: View) {
@@ -182,5 +171,88 @@ impl GwasPipeline {
         let data = [crate::view::mat4_to_array(&matrix)];
 
         queue.write_buffer(&self.uniform_buf, 0, bytemuck::cast_slice(&data));
+    }
+}
+
+pub struct GwasData {
+    pub vertex_buf: wgpu::Buffer,
+    pub vertex_count: usize,
+
+    data: Box<[JsValue]>,
+}
+
+impl GwasData {
+    pub async fn fetch_and_parse(device: &wgpu::Device, url: &str) -> Result<Self> {
+        use wasm_bindgen::JsCast;
+        use wasm_bindgen_futures::JsFuture;
+        use web_sys::{Request, RequestInit, Response};
+
+        let window = web_sys::window().unwrap();
+
+        let mut opts = RequestInit::new();
+        opts.method("GET");
+
+        // TODO handle errors correctly
+        let request = Request::new_with_str_and_init(&url, &opts).unwrap();
+
+        let resp_value = JsFuture::from(window.fetch_with_request(&request))
+            .await
+            .unwrap();
+
+        let resp: Response = resp_value.dyn_into().unwrap();
+        let json = JsFuture::from(resp.json().unwrap()).await.unwrap();
+        let json_array: js_sys::Array = json.dyn_into().ok().unwrap();
+
+        /*
+          {
+            "chr": "1",
+            "rs": "rs3683945",
+            "ps": 3197400,
+            "n_miss": 0,
+            "allele1": "A",
+            "allele0": "G",
+            "af": 0.443,
+            "beta": -0.07788665,
+            "se": 0.06193502,
+            "logl_H1": -1582.163,
+            "l_remle": 4.317993,
+            "p_wald": 0.2087616
+          },
+
+        */
+
+        let mut objects: Vec<JsValue> = Vec::new();
+        let mut vertex_data: Vec<Vertex> = Vec::new();
+
+        for value in json_array.iter() {
+            let pos = js_sys::Reflect::get(&value, &"ps".into()).unwrap();
+            let p = js_sys::Reflect::get(&value, &"p_wald".into()).unwrap();
+
+            let pos = pos.as_f64().unwrap();
+            let p = p.as_f64().unwrap();
+
+            objects.push(value);
+            let vertex = Vertex::new(pos as f32, p as f32);
+            vertex_data.push(vertex);
+            vertex_data.push(vertex);
+            vertex_data.push(vertex);
+        }
+
+        let data = objects.into_boxed_slice();
+
+        let vertex_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vertices"),
+            contents: bytemuck::cast_slice(&vertex_data),
+            usage: wgpu::BufferUsage::VERTEX,
+        });
+
+        let vertex_count = vertex_data.len();
+
+        Ok(Self {
+            vertex_buf,
+            vertex_count,
+
+            data,
+        })
     }
 }
