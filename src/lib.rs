@@ -9,8 +9,6 @@ mod view;
 use state::SharedState;
 use wasm_bindgen::prelude::*;
 
-use wgpu::util::DeviceExt;
-
 use geometry::{Point, Vertex};
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -26,17 +24,6 @@ macro_rules! include_shader {
     };
 }
 
-#[wasm_bindgen]
-extern "C" {
-    fn alert(s: &str);
-}
-
-#[wasm_bindgen]
-pub fn greet() {
-    alert("Hello, rust-genetics-browser!");
-}
-
-use std::borrow::Cow;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -132,12 +119,12 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 match input.virtual_keycode {
                     Some(Key::Left) => {
                         let mut view = state.view.load();
-                        view.center -= (0.1 / view.scale);
+                        view.center -= 0.1 / view.scale;
                         state.view.store(view);
                     }
                     Some(Key::Right) => {
                         let mut view = state.view.load();
-                        view.center += (0.1 / view.scale);
+                        view.center += 0.1 / view.scale;
                         state.view.store(view);
                     }
                     _ => (),
