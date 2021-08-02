@@ -187,6 +187,8 @@ pub struct GwasDataChrs {
     pub vertex_buffers: HashMap<String, wgpu::Buffer>,
     pub vertex_counts: HashMap<String, usize>,
 
+    pub chr_sizes: HashMap<String, usize>,
+
     pub data: HashMap<String, Vec<JsValue>>,
 }
 
@@ -215,6 +217,10 @@ impl GwasDataChrs {
         let mut objects: HashMap<String, Vec<JsValue>> = HashMap::default();
         let mut vertex_datas: HashMap<String, Vec<Vertex>> = HashMap::default();
 
+        // TODO should use a coordinate system file rather than just
+        // the max position in each chromosome
+        let mut chr_sizes: HashMap<String, usize> = HashMap::default();
+
         for value in json_array.iter() {
             let chr = js_sys::Reflect::get(&value, &"chr".into()).unwrap();
             let chr = chr.as_string().unwrap();
@@ -226,6 +232,9 @@ impl GwasDataChrs {
             let p = p.as_f64().unwrap();
 
             objects.entry(chr.clone()).or_default().push(value);
+
+            let size = chr_sizes.entry(chr.clone()).or_default();
+            *size = (*size).max(pos as usize);
 
             let vertices = vertex_datas.entry(chr).or_default();
 
@@ -256,6 +265,8 @@ impl GwasDataChrs {
         Ok(Self {
             vertex_buffers,
             vertex_counts,
+
+            chr_sizes,
 
             data: objects,
         })
