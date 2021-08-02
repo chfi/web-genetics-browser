@@ -1,6 +1,7 @@
 // mod coordinates;
 // mod animation;
 mod geometry;
+mod gui;
 mod gwas;
 mod state;
 mod utils;
@@ -128,14 +129,13 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     .output;
 
                 let view = state.view.load();
-                gwas_pipeline.write_uniform(&device, &queue, view);
 
                 uniforms.write_uniforms(&device, &queue, &chr_offsets, view);
 
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-                let mut first = true;
+                let mut clear = true;
 
                 for (chr, bind_group) in uniforms.bind_groups.iter() {
                     let buf = gwas_chr_data.vertex_buffers.get(chr).unwrap();
@@ -143,43 +143,9 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
                     let buf = buf.slice(..);
 
-                    if first {
-                        gwas_pipeline.draw_with_uniform(
-                            &mut encoder,
-                            &frame,
-                            buf,
-                            bind_group,
-                            *count,
-                            true,
-                        );
-                        first = false;
-                    } else {
-                        gwas_pipeline.draw_with_uniform(
-                            &mut encoder,
-                            &frame,
-                            buf,
-                            bind_group,
-                            *count,
-                            false,
-                        );
-                    }
+                    gwas_pipeline.draw(&mut encoder, &frame, buf, bind_group, *count, clear);
+                    clear = false;
                 }
-
-                /*
-                for chr in gwas_chr_data.vertex_buffers.keys() {
-                    let buf = gwas_chr_data.vertex_buffers.get(chr).unwrap();
-                    let count = gwas_chr_data.vertex_counts.get(chr).unwrap();
-
-                    let buf = buf.slice(..);
-
-                    if first {
-                        gwas_pipeline.draw(&mut encoder, &frame, buf, *count, true);
-                        first = false;
-                    } else {
-                        gwas_pipeline.draw(&mut encoder, &frame, buf, *count, false);
-                    }
-                }
-                */
 
                 queue.submit(Some(encoder.finish()));
             }

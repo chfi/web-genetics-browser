@@ -15,11 +15,7 @@ pub struct GwasPipeline {
     vs: wgpu::ShaderModule,
     fs: wgpu::ShaderModule,
 
-    pub uniform_buf: wgpu::Buffer,
-
     pub bind_group_layout: wgpu::BindGroupLayout,
-    pub bind_group: wgpu::BindGroup,
-
     pub pipeline_layout: wgpu::PipelineLayout,
 
     pub render_pipeline: wgpu::RenderPipeline,
@@ -50,31 +46,9 @@ impl GwasPipeline {
             }],
         });
 
-        let default_view = View::default();
-        let matrix = default_view.to_scaled_matrix();
-        let uniform_contents = [crate::view::mat4_to_array(&matrix)];
-        // let uniform_contents = [glm::value_ptr(&matrix)];
-        // let uniform_contents_test = [0.0, 0.0, 0.0, 0.0];
-        let uniform_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Uniform Buffer"),
-            contents: bytemuck::cast_slice(&uniform_contents),
-            // contents: bytemuck::cast_slice(mx_ref),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-        });
-
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: uniform_buf.as_entire_binding(),
-            }],
-            label: None,
-        });
-
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
             bind_group_layouts: &[&bind_group_layout],
-            // bind_group_layouts: &[],
             push_constant_ranges: &[],
         });
 
@@ -130,23 +104,18 @@ impl GwasPipeline {
             vs,
             fs,
 
-            uniform_buf,
-
             bind_group_layout,
-            bind_group,
-
             pipeline_layout,
             render_pipeline,
         })
     }
 
-    pub fn draw_with_uniform(
+    pub fn draw(
         &self,
         encoder: &mut wgpu::CommandEncoder,
         frame: &wgpu::SwapChainTexture,
         vertex_buf: wgpu::BufferSlice<'_>,
         bind_group: &wgpu::BindGroup,
-        // uniform_buf: wgpu::BufferSlice<'_>,
         vertex_count: usize,
         clear: bool,
     ) {
@@ -175,48 +144,6 @@ impl GwasPipeline {
         rpass.pop_debug_group();
         rpass.insert_debug_marker("Draw!");
         rpass.draw(0..(vertex_count as u32), 0..1);
-    }
-
-    pub fn draw(
-        &self,
-        encoder: &mut wgpu::CommandEncoder,
-        frame: &wgpu::SwapChainTexture,
-        buf: wgpu::BufferSlice<'_>,
-        vertex_count: usize,
-        clear: bool,
-    ) {
-        let load_op = if clear {
-            wgpu::LoadOp::Clear(wgpu::Color::BLACK)
-        } else {
-            wgpu::LoadOp::Load
-        };
-
-        let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: None,
-            color_attachments: &[wgpu::RenderPassColorAttachment {
-                view: &frame.view,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: load_op,
-                    store: true,
-                },
-            }],
-            depth_stencil_attachment: None,
-        });
-        rpass.push_debug_group("Prepare data for draw.");
-        rpass.set_pipeline(&self.render_pipeline);
-        rpass.set_bind_group(0, &self.bind_group, &[]);
-        rpass.set_vertex_buffer(0, buf);
-        rpass.pop_debug_group();
-        rpass.insert_debug_marker("Draw!");
-        rpass.draw(0..(vertex_count as u32), 0..1);
-    }
-
-    pub fn write_uniform(&mut self, _device: &wgpu::Device, queue: &wgpu::Queue, new_view: View) {
-        let matrix = new_view.to_scaled_matrix();
-        let data = [crate::view::mat4_to_array(&matrix)];
-
-        queue.write_buffer(&self.uniform_buf, 0, bytemuck::cast_slice(&data));
     }
 }
 
