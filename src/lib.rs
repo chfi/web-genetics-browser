@@ -144,7 +144,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
                 let view = state.view.load();
 
-                uniforms.write_uniforms(&device, &queue, &chr_offsets, view, -0.4);
+                uniforms.write_uniforms(&device, &queue, &chr_offsets, view, -0.8);
 
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });

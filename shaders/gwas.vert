@@ -12,9 +12,21 @@ out gl_PerVertex {
   vec4 gl_Position;
 };
 
+float neg_log_10(in float p) {
+  float log10 = log(10.0);
+  float p_log = log(p) / log10;
+
+  float neg_p_log = -p_log;
+
+  float max_y = 10.0;
+
+  return neg_p_log / max_y;
+}
+
 
 void main() {
-  vec4 pos = ubo.view_transform * vec4(position, 0.0, 1.0);
+  float y = neg_log_10(position.y);
+  vec4 pos = ubo.view_transform * vec4(position.x, y, 0.0, 1.0);
 
   float b_x;
   float b_y;
