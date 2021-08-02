@@ -6,6 +6,8 @@ use anyhow::Result;
 
 use nalgebra_glm as glm;
 
+use std::collections::HashMap;
+
 use crate::geometry::Vertex;
 use crate::view::{View, ViewportDims};
 
@@ -181,7 +183,53 @@ impl GwasPipeline {
     }
 }
 
-use std::collections::HashMap;
+pub struct GwasUniforms {
+    pub uniform_bufs: HashMap<String, wgpu::Buffer>,
+}
+
+impl GwasUniforms {
+    pub fn new<'a>(device: &wgpu::Device, chr_names: impl Iterator<Item = &'a str>) -> Self {
+        let mut bufs: HashMap<String, wgpu::Buffer> = HashMap::default();
+
+        let default_view = View::default();
+        let matrix = default_view.to_scaled_matrix();
+        let uniform_contents = [crate::view::mat4_to_array(&matrix)];
+
+        for name in chr_names {
+            let label = format!("Chr {} Uniform", name);
+            let label = Some(label.as_str());
+
+            let uniform_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label,
+                contents: bytemuck::cast_slice(&uniform_contents),
+                usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+            });
+
+            bufs.insert(name.to_string(), uniform_buf);
+        }
+
+        GwasUniforms { uniform_bufs: bufs }
+    }
+
+    pub fn write_uniforms(
+        &mut self,
+        _device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        offsets: &HashMap<&str, usize>,
+        view: View,
+    ) {
+        for (name, buf) in self.uniform_bufs.iter() {
+            let mut offset_view = view;
+            let offset = *offsets.get(name.as_str()).unwrap();
+            offset_view.center += offset as f32;
+
+            let matrix = offset_view.to_scaled_matrix();
+            let data = [crate::view::mat4_to_array(&matrix)];
+
+            queue.write_buffer(buf, 0, bytemuck::cast_slice(&data));
+        }
+    }
+}
 
 pub struct GwasDataChrs {
     pub vertex_buffers: HashMap<String, wgpu::Buffer>,
@@ -270,6 +318,26 @@ impl GwasDataChrs {
 
             data: objects,
         })
+    }
+
+    pub fn chr_offsets(&self, padding: usize) -> HashMap<&str, usize> {
+        let mut res: HashMap<&str, usize> = HashMap::default();
+
+        // TODO use coordinate system order
+        let mut keys = self.chr_sizes.keys().collect::<Vec<_>>();
+        keys.sort();
+
+        let mut offset = 0;
+
+        for chr in keys {
+            let size = *self.chr_sizes.get(chr).unwrap();
+
+            res.insert(chr, offset);
+
+            offset += size + padding;
+        }
+
+        res
     }
 }
 
