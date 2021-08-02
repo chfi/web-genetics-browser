@@ -29,7 +29,14 @@ pub struct Gui {
     _vs: wgpu::ShaderModule,
     _fs: wgpu::ShaderModule,
 
-    pub bind_group_layout: wgpu::BindGroupLayout,
+    pub vert_uniform: wgpu::Buffer,
+    pub frag_uniform: wgpu::Buffer,
+
+    pub vert_bind_group: wgpu::BindGroup,
+    pub frag_bind_group: wgpu::BindGroup,
+    // pub bind_group: wgpu::BindGroup,
+    pub vert_bind_group_layout: wgpu::BindGroupLayout,
+    pub frag_bind_group_layout: wgpu::BindGroupLayout,
     pub pipeline_layout: wgpu::PipelineLayout,
 
     pub render_pipeline: wgpu::RenderPipeline,
@@ -45,24 +52,74 @@ impl Gui {
 
         let vertex_size = std::mem::size_of::<GuiVertex>();
 
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: None,
-            entries: &[wgpu::BindGroupLayoutEntry {
+        let vert_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: None,
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStage::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        // min_binding_size: wgpu::BufferSize::new(64),
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
+
+        let frag_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: None,
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        // min_binding_size: wgpu::BufferSize::new(64),
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
+
+        let vert_uniform_contents = [0.0, 0.0];
+        let frag_uniform_contents = [0.0, 0.0];
+
+        let vert_uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("GUI Vertex Stage Uniform"),
+            contents: bytemuck::cast_slice(&vert_uniform_contents),
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+        });
+
+        let frag_uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("GUI Fragment Stage Uniform"),
+            contents: bytemuck::cast_slice(&frag_uniform_contents),
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+        });
+
+        let vert_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &vert_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                visibility: wgpu::ShaderStage::VERTEX,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    // min_binding_size: wgpu::BufferSize::new(64),
-                    min_binding_size: None,
-                },
-                count: None,
+                resource: vert_uniform.as_entire_binding(),
             }],
+            label: None,
+        });
+
+        let frag_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &frag_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: frag_uniform.as_entire_binding(),
+            }],
+            label: None,
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[&bind_group_layout],
+            bind_group_layouts: &[&vert_bind_group_layout, &frag_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -149,7 +206,14 @@ impl Gui {
             _vs: vs,
             _fs: fs,
 
-            bind_group_layout,
+            vert_uniform,
+            frag_uniform,
+
+            vert_bind_group,
+            frag_bind_group,
+
+            vert_bind_group_layout,
+            frag_bind_group_layout,
             pipeline_layout,
             render_pipeline,
         })
