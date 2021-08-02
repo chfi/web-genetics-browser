@@ -9,6 +9,7 @@ mod view;
 
 use gwas::{GwasData, GwasDataChrs, GwasUniforms};
 use state::SharedState;
+use view::View;
 use wasm_bindgen::prelude::*;
 
 use wasm_bindgen::JsCast;
@@ -80,6 +81,10 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
     let chr_offsets = gwas_chr_data.chr_offsets(50_000_000);
 
+    // not actually the total len, as it doesn't take the length of
+    // the last chr into account, but good enough for now
+    let total_len: usize = chr_offsets.values().max().copied().unwrap_or(0);
+
     let mut gwas_pipeline = gwas::GwasPipeline::new(&device, swapchain_format).unwrap();
 
     let mut uniforms = GwasUniforms::new(
@@ -88,10 +93,19 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         gwas_chr_data.chr_sizes.keys().map(|s| s.as_str()),
     );
 
+    let mut init_view = View {
+        center: (total_len as f32) / 2.0,
+        ..View::default()
+    };
+
+    init_view.scale = 0.55 * init_view.base_bp_width * total_len as f32;
+
     let state = SharedState {
         view: Default::default(),
         mouse_pos: Default::default(),
     };
+
+    state.view.store(init_view);
 
     let mut sc_desc = wgpu::SwapChainDescriptor {
         usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
@@ -130,7 +144,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
                 let view = state.view.load();
 
-                uniforms.write_uniforms(&device, &queue, &chr_offsets, view);
+                uniforms.write_uniforms(&device, &queue, &chr_offsets, view, -0.4);
 
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });

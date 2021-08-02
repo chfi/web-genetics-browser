@@ -202,6 +202,7 @@ impl GwasUniforms {
         queue: &wgpu::Queue,
         offsets: &HashMap<String, usize>,
         view: View,
+        vertical_offset: f32,
     ) {
         for (name, buf) in self.uniform_bufs.iter() {
             let mut offset_view = view;
@@ -209,6 +210,8 @@ impl GwasUniforms {
             offset_view.center -= offset as f32;
 
             let matrix = offset_view.to_scaled_matrix();
+            let matrix = matrix.append_translation(&glm::vec3(0.0, vertical_offset, 0.0));
+
             let data = [crate::view::mat4_to_array(&matrix)];
 
             queue.write_buffer(buf, 0, bytemuck::cast_slice(&data));
