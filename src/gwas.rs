@@ -144,14 +144,21 @@ impl GwasPipeline {
         frame: &wgpu::SwapChainTexture,
         buf: wgpu::BufferSlice<'_>,
         vertex_count: usize,
+        clear: bool,
     ) {
+        let load_op = if clear {
+            wgpu::LoadOp::Clear(wgpu::Color::BLACK)
+        } else {
+            wgpu::LoadOp::Load
+        };
+
         let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
             color_attachments: &[wgpu::RenderPassColorAttachment {
                 view: &frame.view,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    load: load_op,
                     store: true,
                 },
             }],

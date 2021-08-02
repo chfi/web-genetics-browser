@@ -125,13 +125,21 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-                // let buf = gwas_data.vertex_buf.slice(..);
-                let buf = gwas_chr_data.vertex_buffers.get("1").unwrap();
-                let count = gwas_chr_data.vertex_counts.get("1").unwrap();
+                let mut first = true;
 
-                let buf = buf.slice(..);
+                for chr in gwas_chr_data.vertex_buffers.keys() {
+                    let buf = gwas_chr_data.vertex_buffers.get(chr).unwrap();
+                    let count = gwas_chr_data.vertex_counts.get(chr).unwrap();
 
-                gwas_pipeline.draw(&mut encoder, &frame, buf, gwas_data.vertex_count);
+                    let buf = buf.slice(..);
+
+                    if first {
+                        gwas_pipeline.draw(&mut encoder, &frame, buf, *count, true);
+                        first = false;
+                    } else {
+                        gwas_pipeline.draw(&mut encoder, &frame, buf, *count, false);
+                    }
+                }
 
                 queue.submit(Some(encoder.finish()));
             }
