@@ -140,6 +140,43 @@ impl GwasPipeline {
         })
     }
 
+    pub fn draw_with_uniform(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        frame: &wgpu::SwapChainTexture,
+        vertex_buf: wgpu::BufferSlice<'_>,
+        bind_group: &wgpu::BindGroup,
+        // uniform_buf: wgpu::BufferSlice<'_>,
+        vertex_count: usize,
+        clear: bool,
+    ) {
+        let load_op = if clear {
+            wgpu::LoadOp::Clear(wgpu::Color::BLACK)
+        } else {
+            wgpu::LoadOp::Load
+        };
+
+        let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: None,
+            color_attachments: &[wgpu::RenderPassColorAttachment {
+                view: &frame.view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: load_op,
+                    store: true,
+                },
+            }],
+            depth_stencil_attachment: None,
+        });
+        rpass.push_debug_group("Prepare data for draw.");
+        rpass.set_pipeline(&self.render_pipeline);
+        rpass.set_bind_group(0, bind_group, &[]);
+        rpass.set_vertex_buffer(0, vertex_buf);
+        rpass.pop_debug_group();
+        rpass.insert_debug_marker("Draw!");
+        rpass.draw(0..(vertex_count as u32), 0..1);
+    }
+
     pub fn draw(
         &self,
         encoder: &mut wgpu::CommandEncoder,
@@ -185,11 +222,18 @@ impl GwasPipeline {
 
 pub struct GwasUniforms {
     pub uniform_bufs: HashMap<String, wgpu::Buffer>,
+
+    pub bind_groups: HashMap<String, wgpu::BindGroup>,
 }
 
 impl GwasUniforms {
-    pub fn new<'a>(device: &wgpu::Device, chr_names: impl Iterator<Item = &'a str>) -> Self {
+    pub fn new<'a>(
+        device: &wgpu::Device,
+        bind_group_layout: &wgpu::BindGroupLayout,
+        chr_names: impl Iterator<Item = &'a str>,
+    ) -> Self {
         let mut bufs: HashMap<String, wgpu::Buffer> = HashMap::default();
+        let mut bind_groups: HashMap<String, wgpu::BindGroup> = HashMap::default();
 
         let default_view = View::default();
         let matrix = default_view.to_scaled_matrix();
@@ -205,23 +249,37 @@ impl GwasUniforms {
                 usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
             });
 
+            let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: bind_group_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform_buf.as_entire_binding(),
+                }],
+                label: None,
+            });
+
             bufs.insert(name.to_string(), uniform_buf);
+
+            bind_groups.insert(name.to_string(), bind_group);
         }
 
-        GwasUniforms { uniform_bufs: bufs }
+        GwasUniforms {
+            uniform_bufs: bufs,
+            bind_groups,
+        }
     }
 
     pub fn write_uniforms(
         &mut self,
         _device: &wgpu::Device,
         queue: &wgpu::Queue,
-        offsets: &HashMap<&str, usize>,
+        offsets: &HashMap<String, usize>,
         view: View,
     ) {
         for (name, buf) in self.uniform_bufs.iter() {
             let mut offset_view = view;
             let offset = *offsets.get(name.as_str()).unwrap();
-            offset_view.center += offset as f32;
+            offset_view.center -= offset as f32;
 
             let matrix = offset_view.to_scaled_matrix();
             let data = [crate::view::mat4_to_array(&matrix)];
@@ -320,8 +378,8 @@ impl GwasDataChrs {
         })
     }
 
-    pub fn chr_offsets(&self, padding: usize) -> HashMap<&str, usize> {
-        let mut res: HashMap<&str, usize> = HashMap::default();
+    pub fn chr_offsets(&self, padding: usize) -> HashMap<String, usize> {
+        let mut res: HashMap<String, usize> = HashMap::default();
 
         // TODO use coordinate system order
         let mut keys = self.chr_sizes.keys().collect::<Vec<_>>();
@@ -332,7 +390,7 @@ impl GwasDataChrs {
         for chr in keys {
             let size = *self.chr_sizes.get(chr).unwrap();
 
-            res.insert(chr, offset);
+            res.insert(chr.to_string(), offset);
 
             offset += size + padding;
         }

@@ -6,7 +6,7 @@ mod state;
 mod utils;
 mod view;
 
-use gwas::{GwasData, GwasDataChrs};
+use gwas::{GwasData, GwasDataChrs, GwasUniforms};
 use state::SharedState;
 use wasm_bindgen::prelude::*;
 
@@ -77,7 +77,15 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         .await
         .unwrap();
 
+    let chr_offsets = gwas_chr_data.chr_offsets(50_000_000);
+
     let mut gwas_pipeline = gwas::GwasPipeline::new(&device, swapchain_format).unwrap();
+
+    let mut uniforms = GwasUniforms::new(
+        &device,
+        &gwas_pipeline.bind_group_layout,
+        gwas_chr_data.chr_sizes.keys().map(|s| s.as_str()),
+    );
 
     let state = SharedState {
         view: Default::default(),
@@ -99,7 +107,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         // `event_loop.run` never returns, therefore we must do this to ensure
         // the resources are properly cleaned up.
         // let _ = (&instance, &adapter, &vs, &fs, &pipeline_layout);
-        let _ = (&instance, &adapter, &gwas_pipeline);
+        let _ = (&instance, &adapter, &gwas_pipeline, &gwas_chr_data);
 
         *control_flow = ControlFlow::Wait;
         match event {
@@ -122,11 +130,42 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 let view = state.view.load();
                 gwas_pipeline.write_uniform(&device, &queue, view);
 
+                uniforms.write_uniforms(&device, &queue, &chr_offsets, view);
+
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
                 let mut first = true;
 
+                for (chr, bind_group) in uniforms.bind_groups.iter() {
+                    let buf = gwas_chr_data.vertex_buffers.get(chr).unwrap();
+                    let count = gwas_chr_data.vertex_counts.get(chr).unwrap();
+
+                    let buf = buf.slice(..);
+
+                    if first {
+                        gwas_pipeline.draw_with_uniform(
+                            &mut encoder,
+                            &frame,
+                            buf,
+                            bind_group,
+                            *count,
+                            true,
+                        );
+                        first = false;
+                    } else {
+                        gwas_pipeline.draw_with_uniform(
+                            &mut encoder,
+                            &frame,
+                            buf,
+                            bind_group,
+                            *count,
+                            false,
+                        );
+                    }
+                }
+
+                /*
                 for chr in gwas_chr_data.vertex_buffers.keys() {
                     let buf = gwas_chr_data.vertex_buffers.get(chr).unwrap();
                     let count = gwas_chr_data.vertex_counts.get(chr).unwrap();
@@ -140,6 +179,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                         gwas_pipeline.draw(&mut encoder, &frame, buf, *count, false);
                     }
                 }
+                */
 
                 queue.submit(Some(encoder.finish()));
             }
