@@ -71,7 +71,7 @@ impl ScreenDescriptor {
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 struct UniformBuffer {
-    screen_size: [f32; 2],
+    screen_size: [f32; 4],
 }
 
 unsafe impl Pod for UniformBuffer {}
@@ -128,7 +128,7 @@ impl RenderPass {
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("egui_uniform_buffer"),
             contents: bytemuck::cast_slice(&[UniformBuffer {
-                screen_size: [0.0, 0.0],
+                screen_size: [0.0, 0.0, 0.0, 0.0],
             }]),
             usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
         });
@@ -672,7 +672,7 @@ impl RenderPass {
             BufferType::Uniform,
             0,
             bytemuck::cast_slice(&[UniformBuffer {
-                screen_size: [logical_width as f32, logical_height as f32],
+                screen_size: [logical_width as f32, logical_height as f32, 0.0, 0.0],
             }]),
         );
 
@@ -704,6 +704,8 @@ impl RenderPass {
                  (c.a() as f32) / 255.0
                 ]
             }).collect::<Vec<_>>();
+
+            web_sys::console::log_1(&format!("vertex count: {}", vertices.len()).into());
 
             let data: &[u8] = as_byte_slice(&vertices);
 

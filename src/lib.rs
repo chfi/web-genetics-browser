@@ -185,6 +185,12 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 platform.begin_frame();
                 let mut app_output = epi::backend::AppOutput::default();
 
+                let rect = platform.context().input().screen_rect();
+
+                web_sys::console::log_1(
+                    &format!("width: {}, height: {}", rect.width(), rect.height()).into(),
+                );
+
                 let mut gui_frame = epi::backend::FrameBuilder {
                     info: epi::IntegrationInfo {
                         web_info: None,
@@ -222,16 +228,18 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     clear = false;
                 }
 
-                queue.submit(Some(encoder.finish()));
+                // queue.submit(Some(encoder.finish()));
 
                 let (_output, paint_commands) = platform.end_frame();
                 let paint_jobs = platform.context().tessellate(paint_commands);
 
                 let frame_time = (Instant::now() - egui_start).as_secs_f64() as f32;
                 previous_frame_time = Some(frame_time);
+                /*
                 let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("encoder"),
                 });
+                */
 
                 // Upload all resources for the GPU.
                 let screen_descriptor = ScreenDescriptor {
@@ -240,7 +248,6 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     scale_factor: window.scale_factor() as f32,
                 };
 
-                /*
                 gui.egui_rpass
                     .update_texture(&device, &queue, &platform.context().texture());
                 gui.egui_rpass.update_user_textures(&device, &queue);
@@ -253,14 +260,13 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     &frame.view,
                     &paint_jobs,
                     &screen_descriptor,
-                    Some(wgpu::Color::BLACK),
+                    None,
                 );
 
                 // Submit the commands.
                 // queue.submit(iter::once(encoder.finish()));
                 queue.submit(Some(encoder.finish()));
                 // *control_flow = ControlFlow::Poll;
-                */
             }
             Event::WindowEvent {
                 event: WindowEvent::KeyboardInput { input, .. },

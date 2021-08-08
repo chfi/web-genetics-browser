@@ -15,7 +15,7 @@ layout (location = 0) out vec2 vs_uv;
 layout (location = 1) out vec4 vs_color;
 
 layout (set = 0, binding = 0) uniform UBO {
-  vec2 screen_dims;
+  vec4 screen_dims;
 } ubo;
 
 /*
@@ -49,14 +49,30 @@ void main() {
   //                   float((u_color >> 16u) & 255u),
   //                   float((u_color >> 24u) & 255u));
 
+  /*
+  if (gl_VertexIndex % 3 == 0) {
+    gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
+  } else if (gl_VertexIndex % 3 == 1) {
+    gl_Position = vec4(1.0, 0.0, 0.0, 1.0);
+  } else {
+    gl_Position = vec4(1.0, 1.0, 0.0, 1.0);
+  }
+  */
+
+  float width = 800.0;
+  float height = 600.0;
+
   gl_Position = vec4(
+                     // 2.0 * pos.x / width - 1.0,
+                     // 1.0 - 2.0 * pos.y / height,
                      2.0 * pos.x / ubo.screen_dims.x - 1.0,
-                     2.0 * pos.y / ubo.screen_dims.y - 1.0,
+                     1.0 - 2.0 * pos.y / ubo.screen_dims.y,
                      0.0,
                      1.0
                      );
 
-  vs_color = color;
+  vs_color = vec4(1.0);
+  // vs_color = color;
   // vs_color = color / 255.0;
   // vs_color = linear_from_srgba(color);
 
