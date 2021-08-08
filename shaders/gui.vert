@@ -1,10 +1,4 @@
 #version 450
-// #extension GL_EXT_debug_printf : enable
-
-// layout (location = 0) in vec2 pos;
-// layout (location = 1) in vec2 uv;
-// layout (location = 2) in vec4 color;
-
 
 layout (location = 0) in vec2 pos;
 layout (location = 1) in vec2 uv;
@@ -17,13 +11,6 @@ layout (location = 1) out vec4 vs_color;
 layout (set = 0, binding = 0) uniform UBO {
   vec4 screen_dims;
 } ubo;
-
-/*
-layout (push_constant) uniform ScreenSize {
-  float width;
-  float height;
-} screen_size;
-*/
 
 // taken from the egui glium example
     // 0-1 linear  from  0-255 sRGB
@@ -40,41 +27,13 @@ vec4 linear_from_srgba(vec4 srgba) {
 }
 
 void main() {
-
-  // uint u_color = uint(i_color);
-
-  // vec4 color = vec4(1.0);
-  // vec4 color = vec4(float(u_color & 255u),
-  //                   float((u_color >> 8u) & 255u),
-  //                   float((u_color >> 16u) & 255u),
-  //                   float((u_color >> 24u) & 255u));
-
-  /*
-  if (gl_VertexIndex % 3 == 0) {
-    gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
-  } else if (gl_VertexIndex % 3 == 1) {
-    gl_Position = vec4(1.0, 0.0, 0.0, 1.0);
-  } else {
-    gl_Position = vec4(1.0, 1.0, 0.0, 1.0);
-  }
-  */
-
-  float width = 800.0;
-  float height = 600.0;
-
   gl_Position = vec4(
-                     // 2.0 * pos.x / width - 1.0,
-                     // 1.0 - 2.0 * pos.y / height,
                      2.0 * pos.x / ubo.screen_dims.x - 1.0,
                      1.0 - 2.0 * pos.y / ubo.screen_dims.y,
                      0.0,
                      1.0
                      );
 
-  vs_color = vec4(1.0);
-  // vs_color = color;
-  // vs_color = color / 255.0;
-  // vs_color = linear_from_srgba(color);
-
+  vs_color = color;
   vs_uv = uv;
 }

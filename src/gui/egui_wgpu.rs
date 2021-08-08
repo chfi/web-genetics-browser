@@ -705,11 +705,8 @@ impl RenderPass {
                 ]
             }).collect::<Vec<_>>();
 
-            web_sys::console::log_1(&format!("vertex count: {}", vertices.len()).into());
-
             let data: &[u8] = as_byte_slice(&vertices);
 
-            // let data: &[u8] = as_byte_slice(&mesh.vertices);
             if i < vertex_size {
                 self.update_buffer(device, queue, BufferType::Vertex, i, data)
             } else {
