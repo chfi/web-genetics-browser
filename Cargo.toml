@@ -17,7 +17,13 @@ rand = "0.8.3"
 
 wasm-bindgen = "0.2.63"
 
-egui = { version = "0.13" }
+egui = { version = "0.13", features = ["single_threaded"] }
+egui_wgpu_backend = { version = "0.10", features = ["web"] }
+egui_winit_platform = { version = "0.9", features = ["webbrowser"] }
+epi = { version = "0.13" }
+
+winit = { version = "0.25", features = ["web-sys"] }
+wgpu = { version = "0.9", features = ["webgl"] }
 
 anyhow = "1.0"
 
@@ -42,9 +48,7 @@ console_error_panic_hook = { version = "0.1.6", optional = true }
 # Unfortunately, `wee_alloc` requires nightly Rust when targeting wasm for now.
 wee_alloc = { version = "0.4.5", optional = true }
 
-winit = { version = "0.24", features = ["web-sys"] }
 
-wgpu = { version = "0.9", features = ["webgl"] }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.13"

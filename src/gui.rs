@@ -3,7 +3,14 @@ use wgpu::util::DeviceExt;
 
 use bytemuck::{Pod, Zeroable};
 
+// use egui_wgpu_backend::{RenderPass, ScreenDescriptor};
+use egui_winit_platform::{Platform, PlatformDescriptor};
+
 use crate::geometry::Point;
+
+pub mod egui_wgpu;
+
+use egui_wgpu::*;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -23,6 +30,67 @@ impl GuiVertex {
     }
 }
 
+pub struct Gui {
+    pub ctx: egui::CtxRef,
+
+    pub egui_rpass: RenderPass,
+    pub screen_descriptor: ScreenDescriptor,
+}
+
+impl Gui {
+    pub fn new(
+        device: &wgpu::Device,
+        format: wgpu::TextureFormat,
+        width: u32,
+        height: u32,
+    ) -> Self {
+        let screen_descriptor = ScreenDescriptor {
+            physical_width: width,
+            physical_height: height,
+            scale_factor: 1.0,
+        };
+
+        let egui_rpass = RenderPass::new(&device, format, 1);
+
+        let ctx = egui::CtxRef::default();
+
+        let font_defs = {
+            use egui::FontFamily as Family;
+            use egui::TextStyle as Style;
+
+            let mut font_defs = egui::FontDefinitions::default();
+            let fam_size = &mut font_defs.family_and_size;
+
+            fam_size.insert(Style::Small, (Family::Proportional, 12.0));
+            fam_size.insert(Style::Body, (Family::Proportional, 16.0));
+            fam_size.insert(Style::Button, (Family::Proportional, 18.0));
+            fam_size.insert(Style::Heading, (Family::Proportional, 22.0));
+            font_defs
+        };
+        ctx.set_fonts(font_defs);
+
+        Self {
+            ctx,
+            egui_rpass,
+            screen_descriptor,
+        }
+    }
+
+    /*
+    pub fn begin_frame(&mut self, width: u32, height: u32) {
+        self.ctx.begin_frame
+    }
+
+    pub fn end_frame(&mut self) -> Vec<egui::ClippedMesh> {
+        let (_output, shapes) = self.ctx.end_frame();
+
+        self.ctx.tessellate(shapes)
+    }
+    */
+    // pub fn
+}
+
+/*
 pub struct Gui {
     pub ctx: egui::CtxRef,
     // frame_input: FrameInput,
@@ -219,3 +287,4 @@ impl Gui {
         })
     }
 }
+*/

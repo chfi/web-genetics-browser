@@ -12,11 +12,18 @@ use state::SharedState;
 use view::View;
 use wasm_bindgen::prelude::*;
 
+// use egui_wgpu_backend::{RenderPass, ScreenDescriptor};
+use egui_winit_platform::{Platform, PlatformDescriptor};
+use epi::*;
+use gui::egui_wgpu::{RenderPass, ScreenDescriptor};
+
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 
 use geometry::{Point, Vertex};
+
+use instant::Instant;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -29,6 +36,20 @@ macro_rules! include_shader {
     ($file:expr) => {
         wgpu::include_spirv!(concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/", $file))
     };
+}
+
+/// A custom event type for the winit app.
+enum AppEvent {
+    RequestRedraw,
+}
+
+// struct ExampleRepaintSignal(std::sync::Mutex<winit::event_loop::EventLoopProxy<Event>>);
+struct ExampleRepaintSignal();
+
+impl epi::RepaintSignal for ExampleRepaintSignal {
+    fn request_repaint(&self) {
+        // self.0.lock().unwrap().send_event(Event::RequestRedraw).ok();
+    }
 }
 
 use winit::{
@@ -61,7 +82,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         .request_device(
             &wgpu::DeviceDescriptor {
                 label: None,
-                features: wgpu::Features::empty(),
+                features: wgpu::Features::default(),
                 limits: wgpu::Limits::default(),
             },
             None,
@@ -70,10 +91,6 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         .expect("Failed to create device");
 
     let swapchain_format = adapter.get_swap_chain_preferred_format(&surface).unwrap();
-
-    let gwas_data = GwasData::fetch_and_parse(&device, "http://localhost:8080/gwas.json")
-        .await
-        .unwrap();
 
     let gwas_chr_data = GwasDataChrs::fetch_and_parse(&device, "http://localhost:8080/gwas.json")
         .await
@@ -117,12 +134,31 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
     let mut swap_chain = device.create_swap_chain(&surface, &sc_desc);
 
+    // let repaint_signal = std::sync::Arc::new(ExampleRepaintSignal(std::sync::Mutex::new(
+    let repaint_signal = std::sync::Arc::new(ExampleRepaintSignal());
+    // We use the egui_winit_platform crate as the platform.
+    let mut platform = Platform::new(PlatformDescriptor {
+        physical_width: size.width as u32,
+        physical_height: size.height as u32,
+        scale_factor: window.scale_factor(),
+        font_definitions: egui::FontDefinitions::default(),
+        style: Default::default(),
+    });
+
+    let start_time = instant::Instant::now();
+    let mut previous_frame_time = None;
+
+    web_sys::console::log_1(&"creating gui".into());
+    let mut gui = gui::Gui::new(&device, swapchain_format, size.width, size.height);
+
     event_loop.run(move |event, _, control_flow| {
         // Have the closure take ownership of the resources.
         // `event_loop.run` never returns, therefore we must do this to ensure
         // the resources are properly cleaned up.
         // let _ = (&instance, &adapter, &vs, &fs, &pipeline_layout);
         let _ = (&instance, &adapter, &gwas_pipeline, &gwas_chr_data);
+
+        platform.handle_event(&event);
 
         *control_flow = ControlFlow::Wait;
         match event {
@@ -137,10 +173,35 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
             }
             Event::MainEventsCleared => {
                 // Event::RedrawRequested(_) => {
+
+                platform.update_time(start_time.elapsed().as_secs_f64());
+
                 let frame = swap_chain
                     .get_current_frame()
                     .expect("Failed to acquire next swap chain texture")
                     .output;
+
+                let egui_start = instant::Instant::now();
+                platform.begin_frame();
+                let mut app_output = epi::backend::AppOutput::default();
+
+                let mut gui_frame = epi::backend::FrameBuilder {
+                    info: epi::IntegrationInfo {
+                        web_info: None,
+                        cpu_usage: previous_frame_time,
+                        seconds_since_midnight: None,
+                        native_pixels_per_point: Some(window.scale_factor() as _),
+                        prefer_dark_mode: None,
+                    },
+                    tex_allocator: &mut gui.egui_rpass,
+                    output: &mut app_output,
+                    repaint_signal: repaint_signal.clone(),
+                }
+                .build();
+
+                egui::Window::new("hello world").show(&platform.context(), |ui| {
+                    ui.label("Hello world");
+                });
 
                 let view = state.view.load();
 
@@ -162,6 +223,44 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 }
 
                 queue.submit(Some(encoder.finish()));
+
+                let (_output, paint_commands) = platform.end_frame();
+                let paint_jobs = platform.context().tessellate(paint_commands);
+
+                let frame_time = (Instant::now() - egui_start).as_secs_f64() as f32;
+                previous_frame_time = Some(frame_time);
+                let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("encoder"),
+                });
+
+                // Upload all resources for the GPU.
+                let screen_descriptor = ScreenDescriptor {
+                    physical_width: sc_desc.width,
+                    physical_height: sc_desc.height,
+                    scale_factor: window.scale_factor() as f32,
+                };
+
+                /*
+                gui.egui_rpass
+                    .update_texture(&device, &queue, &platform.context().texture());
+                gui.egui_rpass.update_user_textures(&device, &queue);
+                gui.egui_rpass
+                    .update_buffers(&device, &queue, &paint_jobs, &screen_descriptor);
+
+                // Record all render passes.
+                gui.egui_rpass.execute(
+                    &mut encoder,
+                    &frame.view,
+                    &paint_jobs,
+                    &screen_descriptor,
+                    Some(wgpu::Color::BLACK),
+                );
+
+                // Submit the commands.
+                // queue.submit(iter::once(encoder.finish()));
+                queue.submit(Some(encoder.finish()));
+                // *control_flow = ControlFlow::Poll;
+                */
             }
             Event::WindowEvent {
                 event: WindowEvent::KeyboardInput { input, .. },
