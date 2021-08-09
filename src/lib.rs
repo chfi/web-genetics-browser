@@ -1,5 +1,5 @@
-// mod coordinates;
 // mod animation;
+mod coordinates;
 mod geometry;
 mod gui;
 mod gwas;
@@ -7,6 +7,7 @@ mod state;
 mod utils;
 mod view;
 
+use coordinates::CoordinateSystem;
 use gwas::{GwasData, GwasDataChrs, GwasUniforms};
 use state::SharedState;
 use view::View;
@@ -89,6 +90,10 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         .expect("Failed to create device");
 
     let swapchain_format = adapter.get_swap_chain_preferred_format(&surface).unwrap();
+
+    let mouse_chrs = CoordinateSystem::fetch_and_parse("http://localhost:8080/mouse_chrs.json")
+        .await
+        .unwrap();
 
     let gwas_chr_data = GwasDataChrs::fetch_and_parse(&device, "http://localhost:8080/gwas.json")
         .await
