@@ -190,7 +190,12 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     log_timer = Instant::now();
                 }
 
-                gui.draw_chr_labels(&chr_offsets, state.view.load(), 0.0, log);
+                gui.draw_chr_labels(
+                    &chr_offsets,
+                    state.view.load(),
+                    (sc_desc.height as f32) * 0.95,
+                    log,
+                );
 
                 let rect = gui.platform.context().input().screen_rect();
 
@@ -207,10 +212,6 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     repaint_signal: repaint_signal.clone(),
                 }
                 .build();
-
-                egui::Window::new("hello world").show(&gui.platform.context(), |ui| {
-                    ui.label("Hello world");
-                });
 
                 let view = state.view.load();
 

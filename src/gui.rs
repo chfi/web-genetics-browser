@@ -70,13 +70,7 @@ impl Gui {
         }
     }
 
-    pub fn draw_chr_labels(
-        &self,
-        offsets: &HashMap<String, usize>,
-        view: View,
-        vertical_offset: f32,
-        log: bool,
-    ) {
+    pub fn draw_chr_labels(&self, offsets: &HashMap<String, usize>, view: View, y: f32, log: bool) {
         let ctx = self.platform.context();
         let painter = ctx.layer_painter(painter_layer());
 
@@ -85,18 +79,11 @@ impl Gui {
         for (chr, offset) in offsets {
             let offset = *offset;
 
-            let mut offset_view = view;
-            // offset_view.center -= offset as f32;
-
-            let matrix = offset_view.to_scaled_matrix();
-            let matrix = matrix.append_translation(&glm::vec3(0.0, vertical_offset, 0.0));
-
+            let matrix = view.to_scaled_matrix();
             let screen_pos = matrix * glm::vec4(offset as f32, 0.0, 0.0, 1.0);
-            // let screen_2d = Point::new(screen_pos[0], screen_pos[1]);
 
-            let y = screen_rect.height() / 2.0;
-            let x = screen_pos[0] / 2.0;
-            let x_ = x * screen_rect.width();
+            let x = screen_pos[0];
+            let x_ = (x + 1.0) * (screen_rect.width() / 2.0);
 
             let screen_2d = Point::new(x_, y);
 
