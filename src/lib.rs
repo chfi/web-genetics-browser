@@ -99,18 +99,18 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         .await
         .unwrap();
 
-    let chr_offsets = gwas_chr_data.chr_offsets(50_000_000);
+    let chr_offsets = mouse_chrs.chr_offsets(50_000_000);
 
     // not actually the total len, as it doesn't take the length of
     // the last chr into account, but good enough for now
-    let total_len: usize = chr_offsets.values().max().copied().unwrap_or(0);
+    let total_len: usize = chr_offsets.iter().map(|(_, l)| *l).max().unwrap_or(0);
 
     let mut gwas_pipeline = gwas::GwasPipeline::new(&device, swapchain_format).unwrap();
 
     let mut uniforms = GwasUniforms::new(
         &device,
         &gwas_pipeline.bind_group_layout,
-        gwas_chr_data.chr_sizes.keys().map(|s| s.as_str()),
+        mouse_chrs.chr_names(),
     );
 
     let mut init_view = View {
@@ -228,16 +228,15 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 let mut clear = true;
 
                 for (chr, bind_group) in uniforms.bind_groups.iter() {
-                    let buf = gwas_chr_data.vertex_buffers.get(chr).unwrap();
-                    let count = gwas_chr_data.vertex_counts.get(chr).unwrap();
+                    if let Some(buf) = gwas_chr_data.vertex_buffers.get(chr) {
+                        let count = gwas_chr_data.vertex_counts.get(chr).unwrap();
 
-                    let buf = buf.slice(..);
+                        let buf = buf.slice(..);
 
-                    gwas_pipeline.draw(&mut encoder, &frame, buf, bind_group, *count, clear);
-                    clear = false;
+                        gwas_pipeline.draw(&mut encoder, &frame, buf, bind_group, *count, clear);
+                        clear = false;
+                    }
                 }
-
-                // queue.submit(Some(encoder.finish()));
 
                 let (_output, paint_commands) = gui.platform.end_frame();
                 let paint_jobs = gui.platform.context().tessellate(paint_commands);

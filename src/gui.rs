@@ -70,7 +70,7 @@ impl Gui {
         }
     }
 
-    pub fn draw_chr_labels(&self, offsets: &HashMap<String, usize>, view: View, y: f32, log: bool) {
+    pub fn draw_chr_labels(&self, offsets: &[(String, usize)], view: View, y: f32, log: bool) {
         let ctx = self.platform.context();
         let painter = ctx.layer_painter(painter_layer());
 
