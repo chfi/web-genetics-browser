@@ -8,7 +8,7 @@ mod utils;
 mod view;
 
 use coordinates::CoordinateSystem;
-use gwas::{GwasData, GwasDataChrs, GwasUniforms};
+use gwas::{GwasDataChrs, GwasUniforms};
 use state::SharedState;
 use view::View;
 use wasm_bindgen::prelude::*;
@@ -100,6 +100,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         .unwrap();
 
     let chr_offsets = mouse_chrs.chr_offsets(50_000_000);
+    let chr_ranges = mouse_chrs.chr_ranges(50_000_000);
 
     // not actually the total len, as it doesn't take the length of
     // the last chr into account, but good enough for now
@@ -196,7 +197,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 }
 
                 gui.draw_chr_labels(
-                    &chr_offsets,
+                    &chr_ranges,
                     state.view.load(),
                     (sc_desc.height as f32) * 0.95,
                     log,
@@ -220,7 +221,14 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
                 let view = state.view.load();
 
-                uniforms.write_uniforms(&device, &queue, &chr_offsets, view, -0.8);
+                uniforms.write_uniforms(
+                    &device,
+                    &queue,
+                    &chr_offsets,
+                    view,
+                    -0.8,
+                    gwas_chr_data.min_p,
+                );
 
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });

@@ -165,7 +165,18 @@ impl GwasUniforms {
 
         let default_view = View::default();
         let matrix = default_view.to_scaled_matrix();
-        let uniform_contents = [crate::view::mat4_to_array(&matrix)];
+
+        let mat_array = crate::view::mat4_to_array(&matrix);
+        let mat_data: &[u8] = bytemuck::cast_slice(&mat_array);
+
+        let param_array = [0.0; 4];
+        let param_data: &[u8] = bytemuck::cast_slice(&param_array);
+
+        let mut data = Vec::with_capacity(mat_data.len() + param_data.len());
+        data.extend_from_slice(mat_data);
+        data.extend_from_slice(param_data);
+
+        let uniform_contents = data;
 
         for name in chr_names {
             let label = format!("Chr {} Uniform", name);
@@ -204,6 +215,7 @@ impl GwasUniforms {
         offsets: &[(String, usize)],
         view: View,
         vertical_offset: f32,
+        min_y: f32,
     ) {
         for (name, offset) in offsets {
             // for (name, buf) in self.uniform_bufs.iter() {
@@ -215,7 +227,15 @@ impl GwasUniforms {
             let matrix = offset_view.to_scaled_matrix();
             let matrix = matrix.append_translation(&glm::vec3(0.0, vertical_offset, 0.0));
 
-            let data = [crate::view::mat4_to_array(&matrix)];
+            let mat_array = crate::view::mat4_to_array(&matrix);
+            let mat_data: &[u8] = bytemuck::cast_slice(&mat_array);
+
+            let param_array = [min_y; 4];
+            let param_data: &[u8] = bytemuck::cast_slice(&param_array);
+
+            let mut data = Vec::with_capacity(mat_data.len() + param_data.len());
+            data.extend_from_slice(mat_data);
+            data.extend_from_slice(param_data);
 
             queue.write_buffer(buf, 0, bytemuck::cast_slice(&data));
         }
@@ -227,6 +247,9 @@ pub struct GwasDataChrs {
     pub vertex_counts: HashMap<String, usize>,
 
     pub data: HashMap<String, Vec<JsValue>>,
+
+    pub min_p: f32,
+    pub max_p: f32,
 }
 
 impl GwasDataChrs {
@@ -254,6 +277,9 @@ impl GwasDataChrs {
         let mut objects: HashMap<String, Vec<JsValue>> = HashMap::default();
         let mut vertex_datas: HashMap<String, Vec<Vertex>> = HashMap::default();
 
+        let mut min_p = std::f64::MAX;
+        let mut max_p = std::f64::MIN;
+
         for value in json_array.iter() {
             let chr = js_sys::Reflect::get(&value, &"chr".into()).unwrap();
             let chr = chr.as_string().unwrap();
@@ -263,6 +289,9 @@ impl GwasDataChrs {
 
             let pos = pos.as_f64().unwrap();
             let p = p.as_f64().unwrap();
+
+            min_p = min_p.min(p);
+            max_p = max_p.max(p);
 
             objects.entry(chr.clone()).or_default().push(value);
 
@@ -297,116 +326,9 @@ impl GwasDataChrs {
             vertex_counts,
 
             data: objects,
-        })
-    }
 
-    /*
-    pub fn chr_offsets(&self, padding: usize) -> HashMap<String, usize> {
-        let mut res: HashMap<String, usize> = HashMap::default();
-
-        // TODO use coordinate system order
-        let mut keys = self.chr_sizes.keys().collect::<Vec<_>>();
-        keys.sort();
-
-        let mut offset = 0;
-
-        for chr in keys {
-            let size = *self.chr_sizes.get(chr).unwrap();
-
-            res.insert(chr.to_string(), offset);
-
-            offset += size + padding;
-        }
-
-        res
-    }
-    */
-}
-
-pub struct GwasData {
-    pub vertex_buf: wgpu::Buffer,
-    pub vertex_count: usize,
-
-    data: Box<[JsValue]>,
-}
-
-impl GwasData {
-    pub async fn fetch_and_parse(device: &wgpu::Device, url: &str) -> Result<Self> {
-        use wasm_bindgen::JsCast;
-        use wasm_bindgen_futures::JsFuture;
-        use web_sys::{Request, RequestInit, Response};
-
-        let window = web_sys::window().unwrap();
-
-        let mut opts = RequestInit::new();
-        opts.method("GET");
-
-        // TODO handle errors correctly
-        let request = Request::new_with_str_and_init(&url, &opts).unwrap();
-
-        let resp_value = JsFuture::from(window.fetch_with_request(&request))
-            .await
-            .unwrap();
-
-        let resp: Response = resp_value.dyn_into().unwrap();
-        let json = JsFuture::from(resp.json().unwrap()).await.unwrap();
-        let json_array: js_sys::Array = json.dyn_into().ok().unwrap();
-
-        /*
-          {
-            "chr": "1",
-            "rs": "rs3683945",
-            "ps": 3197400,
-            "n_miss": 0,
-            "allele1": "A",
-            "allele0": "G",
-            "af": 0.443,
-            "beta": -0.07788665,
-            "se": 0.06193502,
-            "logl_H1": -1582.163,
-            "l_remle": 4.317993,
-            "p_wald": 0.2087616
-          },
-
-        */
-
-        let mut objects: Vec<JsValue> = Vec::new();
-        let mut vertex_data: Vec<Vertex> = Vec::new();
-
-        for value in json_array.iter() {
-            let chr = js_sys::Reflect::get(&value, &"chr".into()).unwrap();
-            let chr = chr.as_string().unwrap();
-
-            if chr == "1" {
-                let pos = js_sys::Reflect::get(&value, &"ps".into()).unwrap();
-                let p = js_sys::Reflect::get(&value, &"p_wald".into()).unwrap();
-
-                let pos = pos.as_f64().unwrap();
-                let p = p.as_f64().unwrap();
-
-                objects.push(value);
-                let vertex = Vertex::new(pos as f32, p as f32);
-                vertex_data.push(vertex);
-                vertex_data.push(vertex);
-                vertex_data.push(vertex);
-            }
-        }
-
-        let data = objects.into_boxed_slice();
-
-        let vertex_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertices"),
-            contents: bytemuck::cast_slice(&vertex_data),
-            usage: wgpu::BufferUsage::VERTEX,
-        });
-
-        let vertex_count = vertex_data.len();
-
-        Ok(Self {
-            vertex_buf,
-            vertex_count,
-
-            data,
+            min_p: min_p as f32,
+            max_p: max_p as f32,
         })
     }
 }

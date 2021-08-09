@@ -21,6 +21,20 @@ impl CoordinateSystem {
             .collect()
     }
 
+    pub fn chr_ranges(&self, padding: usize) -> Vec<(String, (usize, usize))> {
+        let mut offset = 0;
+
+        self.chrs
+            .iter()
+            .map(|(name, len)| {
+                let start = offset;
+                let end = offset + len;
+                offset += len + padding;
+                (name.to_string(), (start, end))
+            })
+            .collect()
+    }
+
     pub fn chr_names(&self) -> impl Iterator<Item = &str> + '_ {
         self.chrs.iter().map(|(name, _)| name.as_str())
     }

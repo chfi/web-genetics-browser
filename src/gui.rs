@@ -70,14 +70,20 @@ impl Gui {
         }
     }
 
-    pub fn draw_chr_labels(&self, offsets: &[(String, usize)], view: View, y: f32, log: bool) {
+    pub fn draw_chr_labels(
+        &self,
+        offsets: &[(String, (usize, usize))],
+        view: View,
+        y: f32,
+        log: bool,
+    ) {
         let ctx = self.platform.context();
         let painter = ctx.layer_painter(painter_layer());
 
         let screen_rect = ctx.input().screen_rect();
 
-        for (chr, offset) in offsets {
-            let offset = *offset;
+        for (chr, (start, end)) in offsets {
+            let offset = *start + ((*end - *start) / 2);
 
             let matrix = view.to_scaled_matrix();
             let screen_pos = matrix * glm::vec4(offset as f32, 0.0, 0.0, 1.0);
@@ -92,7 +98,7 @@ impl Gui {
                 egui::Align2::CENTER_CENTER,
                 chr,
                 egui::TextStyle::Heading,
-                egui::Color32::RED,
+                egui::Color32::WHITE,
             );
 
             if log {

@@ -6,6 +6,7 @@ layout (location = 0) out vec3 barycentric;
 
 layout (set = 0, binding = 0) uniform UBO {
   mat4 view_transform;
+  vec4 params;
 } ubo;
 
 out gl_PerVertex {
@@ -18,14 +19,14 @@ float neg_log_10(in float p) {
 
   float neg_p_log = -p_log;
 
-  float max_y = 10.0;
+  float max_y = -(log(ubo.params.x) / log10);
 
   return neg_p_log / max_y;
 }
 
 
 void main() {
-  float y = neg_log_10(position.y);
+  float y = 1.5 * neg_log_10(position.y);
   vec4 pos = ubo.view_transform * vec4(position.x, y, 0.0, 1.0);
 
   float b_x;
