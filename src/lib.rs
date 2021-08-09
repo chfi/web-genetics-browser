@@ -138,7 +138,10 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let start_time = instant::Instant::now();
     let mut previous_frame_time = None;
 
+    let mut log_timer = Instant::now();
+
     web_sys::console::log_1(&"creating gui".into());
+
     let mut gui = gui::Gui::new(
         &device,
         swapchain_format,
@@ -180,6 +183,14 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 let egui_start = instant::Instant::now();
                 gui.platform.begin_frame();
                 let mut app_output = epi::backend::AppOutput::default();
+
+                let log = log_timer.elapsed().as_secs_f64() > 1.0;
+
+                if log {
+                    log_timer = Instant::now();
+                }
+
+                gui.draw_chr_labels(&chr_offsets, state.view.load(), 0.0, log);
 
                 let rect = gui.platform.context().input().screen_rect();
 

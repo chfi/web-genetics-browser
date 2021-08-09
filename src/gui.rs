@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use wgpu::util::DeviceExt;
 
@@ -6,7 +8,10 @@ use bytemuck::{Pod, Zeroable};
 // use egui_wgpu_backend::{RenderPass, ScreenDescriptor};
 use egui_winit_platform::{Platform, PlatformDescriptor};
 
-use crate::geometry::Point;
+use nalgebra as na;
+use nalgebra_glm as glm;
+
+use crate::{geometry::Point, view::View};
 
 pub mod egui_wgpu;
 
@@ -64,4 +69,56 @@ impl Gui {
             screen_descriptor,
         }
     }
+
+    pub fn draw_chr_labels(
+        &self,
+        offsets: &HashMap<String, usize>,
+        view: View,
+        vertical_offset: f32,
+        log: bool,
+    ) {
+        let ctx = self.platform.context();
+        let painter = ctx.layer_painter(painter_layer());
+
+        let screen_rect = ctx.input().screen_rect();
+
+        for (chr, offset) in offsets {
+            let offset = *offset;
+
+            let mut offset_view = view;
+            // offset_view.center -= offset as f32;
+
+            let matrix = offset_view.to_scaled_matrix();
+            let matrix = matrix.append_translation(&glm::vec3(0.0, vertical_offset, 0.0));
+
+            let screen_pos = matrix * glm::vec4(offset as f32, 0.0, 0.0, 1.0);
+            // let screen_2d = Point::new(screen_pos[0], screen_pos[1]);
+
+            let y = screen_rect.height() / 2.0;
+            let x = screen_pos[0] / 2.0;
+            let x_ = x * screen_rect.width();
+
+            let screen_2d = Point::new(x_, y);
+
+            let rect = painter.text(
+                screen_2d.into(),
+                egui::Align2::CENTER_CENTER,
+                chr,
+                egui::TextStyle::Heading,
+                egui::Color32::RED,
+            );
+
+            if log {
+                let string = format!("x: {}, y: {}", rect.center().x, rect.center().y);
+                web_sys::console::log_1(&string.into());
+            }
+        }
+    }
+}
+
+fn painter_layer() -> egui::LayerId {
+    egui::LayerId::new(
+        egui::Order::Background,
+        egui::Id::new("gui_text_background"),
+    )
 }
