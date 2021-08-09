@@ -12,8 +12,6 @@ use state::SharedState;
 use view::View;
 use wasm_bindgen::prelude::*;
 
-// use egui_wgpu_backend::{RenderPass, ScreenDescriptor};
-use egui_winit_platform::{Platform, PlatformDescriptor};
 use epi::*;
 use gui::egui_wgpu::{RenderPass, ScreenDescriptor};
 
@@ -136,20 +134,18 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
     // let repaint_signal = std::sync::Arc::new(ExampleRepaintSignal(std::sync::Mutex::new(
     let repaint_signal = std::sync::Arc::new(ExampleRepaintSignal());
-    // We use the egui_winit_platform crate as the platform.
-    let mut platform = Platform::new(PlatformDescriptor {
-        physical_width: size.width as u32,
-        physical_height: size.height as u32,
-        scale_factor: window.scale_factor(),
-        font_definitions: egui::FontDefinitions::default(),
-        style: Default::default(),
-    });
 
     let start_time = instant::Instant::now();
     let mut previous_frame_time = None;
 
     web_sys::console::log_1(&"creating gui".into());
-    let mut gui = gui::Gui::new(&device, swapchain_format, size.width, size.height);
+    let mut gui = gui::Gui::new(
+        &device,
+        swapchain_format,
+        size.width,
+        size.height,
+        window.scale_factor(),
+    );
 
     event_loop.run(move |event, _, control_flow| {
         // Have the closure take ownership of the resources.
@@ -158,7 +154,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         // let _ = (&instance, &adapter, &vs, &fs, &pipeline_layout);
         let _ = (&instance, &adapter, &gwas_pipeline, &gwas_chr_data);
 
-        platform.handle_event(&event);
+        gui.platform.handle_event(&event);
 
         *control_flow = ControlFlow::Wait;
         match event {
@@ -174,7 +170,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
             Event::MainEventsCleared => {
                 // Event::RedrawRequested(_) => {
 
-                platform.update_time(start_time.elapsed().as_secs_f64());
+                gui.platform.update_time(start_time.elapsed().as_secs_f64());
 
                 let frame = swap_chain
                     .get_current_frame()
@@ -182,14 +178,10 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     .output;
 
                 let egui_start = instant::Instant::now();
-                platform.begin_frame();
+                gui.platform.begin_frame();
                 let mut app_output = epi::backend::AppOutput::default();
 
-                let rect = platform.context().input().screen_rect();
-
-                web_sys::console::log_1(
-                    &format!("width: {}, height: {}", rect.width(), rect.height()).into(),
-                );
+                let rect = gui.platform.context().input().screen_rect();
 
                 let mut gui_frame = epi::backend::FrameBuilder {
                     info: epi::IntegrationInfo {
@@ -205,7 +197,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 }
                 .build();
 
-                egui::Window::new("hello world").show(&platform.context(), |ui| {
+                egui::Window::new("hello world").show(&gui.platform.context(), |ui| {
                     ui.label("Hello world");
                 });
 
@@ -230,8 +222,8 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
                 // queue.submit(Some(encoder.finish()));
 
-                let (_output, paint_commands) = platform.end_frame();
-                let paint_jobs = platform.context().tessellate(paint_commands);
+                let (_output, paint_commands) = gui.platform.end_frame();
+                let paint_jobs = gui.platform.context().tessellate(paint_commands);
 
                 let frame_time = (Instant::now() - egui_start).as_secs_f64() as f32;
                 previous_frame_time = Some(frame_time);
@@ -249,7 +241,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 };
 
                 gui.egui_rpass
-                    .update_texture(&device, &queue, &platform.context().texture());
+                    .update_texture(&device, &queue, &gui.platform.context().texture());
                 gui.egui_rpass.update_user_textures(&device, &queue);
                 gui.egui_rpass
                     .update_buffers(&device, &queue, &paint_jobs, &screen_descriptor);
